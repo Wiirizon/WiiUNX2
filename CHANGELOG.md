@@ -3,7 +3,8 @@
 ## 0.6.12-rc.3 — Release candidate
 
 - Arrange the search keyboard in QWERTY order and center the D-pad glyph in its badge.
-- Keep the profile ring visible and add a subtle, original color drift to the selected tile outline.
+- Keep the profile ring visible and add a subtle, original brightness pulse to the selected tile outline.
+- Keep the selected tile outline pulse continuous across the 32-bit millisecond clock wrap (about 49.7 days of uptime) instead of stepping once.
 - Record the latest Wii U disc and launch-diagnostic reports in the project documentation.
 
 ### Validation and known limitations

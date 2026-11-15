@@ -420,13 +420,24 @@ inline int rateLimitWaitSeconds(int status,const std::map<std::string,std::strin
     return kDefaultRateWaitSeconds;
 }
 
-// The single archive entry the updater installs, mapped to its SD-relative destination. Matches the entry that
-// Package-Release.mjs writes. Every other name (root men.rpx, modules, traversal, separators, case or length
-// variants) returns an empty string: fail closed.
-inline std::string installPathFor(const std::string &entryName) {
-    static const std::string kArchiveEntry="sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx";
-    static const std::string kInstallDestination="wiiu/environments/aroma-wiiunx2/men.rpx";
-    return entryName==kArchiveEntry?kInstallDestination:std::string();
+// Zip entry names: relative, printable ASCII, no backslash or ':', no empty/'.'/'..' component, and only
+// "men.rpx" or entries under "wiiu/environments/aroma-wiiunx2/" (directories are rejected too).
+inline bool isSafeInstallPath(const std::string &name) {
+    static const std::string kEnvironmentPrefix="wiiu/environments/aroma-wiiunx2/";
+    if(name.empty()||name.size()>kMaxInstallPathBytes) return false;
+    for(char c:name) {
+        const auto u=static_cast<unsigned char>(c);
+        if(u<0x20||u>=0x7f||c=='\\'||c==':') return false;
+    }
+    if(name!="men.rpx"&&!detail::startsWith(name,kEnvironmentPrefix)) return false;
+    size_t start=0;
+    while(true) {
+        const size_t slash=name.find('/',start);
+        const std::string component=name.substr(start,slash==std::string::npos?std::string::npos:slash-start);
+        if(component.empty()||component=="."||component=="..") return false;
+        if(slash==std::string::npos) return true;
+        start=slash+1;
+    }
 }
 
 // Returns base+".backup-"+stamp, or an empty string when base or stamp is unsafe. Stamp: 1..32 chars of [0-9A-Za-z-].

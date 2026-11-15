@@ -31,6 +31,14 @@ int main() {
     assert(std::isfinite(huge));
     assert(huge >= 0.90f && huge <= 1.10f);
 
+    // The 32-bit millisecond wrap (2^32) is not a multiple of the period, so the
+    // phase must come from the full-width value, not a truncated one.
+    const uint64_t wrapMs = 4294967296ull;
+    assert(std::fabs(selectionPulseScale(wrapMs) - selectionPulseScale(static_cast<uint32_t>(wrapMs % kSelectionPulsePeriodMs))) <= 1e-6f);
+    for (uint64_t t = wrapMs - 4000u; t < wrapMs + 4000u; ++t) {
+        assert(std::fabs(selectionPulseScale(t + 1u) - selectionPulseScale(t)) < 0.001f);
+    }
+
     std::printf("selection-pulse: min=%f max=%f huge=%f\n", static_cast<double>(minValue), static_cast<double>(maxValue), static_cast<double>(huge));
     return 0;
 }

@@ -1,5 +1,9 @@
 # WiiUNX2 changelog
 
+## Unreleased
+
+- Updater core (not wired into the menu): the install path is now one exact archive entry, `sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx`, mapped to `wiiu/environments/aroma-wiiunx2/men.rpx`. Other entries, including module files, are rejected instead of accepted by prefix.
+
 ## 0.6.12-rc.3 — Release candidate
 
 - Arrange the search keyboard in QWERTY order and center the D-pad glyph in its badge.

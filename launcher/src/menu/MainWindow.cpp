@@ -277,12 +277,19 @@ void MainWindow::process() {
 void MainWindow::draw(CVideo *v) {
     std::lock_guard<std::recursive_mutex> guard(tilesMutex);
     drawImage(background,v,640,360);
-    drawImage(*ring,v,80,75);
     auto current=std::find_if(accounts.begin(),accounts.end(),[this](const Account &a){return a.slot==activeSlot;});
     if(current!=accounts.end() && current->image) {
         current->image->setScaleX(52.f/current->data->getWidth());current->image->setScaleY(52.f/current->data->getHeight());
+        // Make profile icon more prominent when in its focus row, but without the gradient ring
+        if(focusRow==2) current->image->setAlpha(1.f);
+        else current->image->setAlpha(0.9f);
         drawImage(*current->image,v,80,75);
-    } else {profile->setScale(52.f/64);drawImage(*profile,v,80,75);profile->setScale(1);}
+    } else {
+        // Make default profile icon more prominent when in its focus row, but without the gradient ring
+        if(focusRow==2) profile->setAlpha(1.f);
+        else profile->setAlpha(0.9f);
+        profile->setScale(52.f/64);drawImage(*profile,v,80,75);profile->setScale(1);
+    }
     if(focusRow==2) drawText(profileName,v,128,75);
     drawText(clockText,v,1070,76);
     network->setAlpha(connected ? 1.f : .22f);

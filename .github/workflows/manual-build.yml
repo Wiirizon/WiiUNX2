@@ -1,0 +1,101 @@
+name: Manual Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: 'Version tag (e.g., v0.6.13)'
+        required: false
+        default: 'dev'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Setup devkitPPC
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget
+        wget https://github.com/devkitPro/pacman/releases/download/v6.0.2/devkitpro-pacman.amd64.deb
+        sudo dpkg -i devkitpro-pacman.amd64.deb
+        sudo dkp-pacman -Sy
+        sudo dkp-pacman -S --noconfirm wii-dev wiiu-dev ppc-freetype ppc-glm ppc-libgd ppc-libjpeg-turbo ppc-libpng ppc-libmad ppc-libvorbisidec ppc-libogg ppc-bzip2 ppc-zlib
+    
+    - name: Set environment variables
+      run: |
+        echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
+        echo "DEVKITPPC=/opt/devkitpro/devkitPPC" >> $GITHUB_ENV
+        echo "/opt/devkitpro/tools/bin" >> $GITHUB_PATH
+    
+    - name: Build all dependencies and launcher
+      run: |
+        cd dependencies/libgui && make -j$(nproc)
+        cd ../librpxloader && make -j$(nproc)
+        cd ../libwuhbutils && make -j$(nproc)
+        cd ../../launcher && make -j$(nproc)
+    
+    - name: Prepare package
+      run: |
+        VERSION="${{ github.event.inputs.version_tag }}"
+        if [ "$VERSION" = "dev" ]; then
+          VERSION="dev-$(date +%Y%m%d-%H%M%S)"
+        fi
+        
+        mkdir -p "WiiUNX2-$VERSION"
+        cp launcher/men.rpx "WiiUNX2-$VERSION/"
+        
+        cat > "WiiUNX2-$VERSION/README.txt" << EOF
+        WiiUNX2 Custom Build
+        ====================
+        Version: $VERSION
+        Built: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        Commit: ${{ github.sha }}
+        
+        CHANGES:
+        --------
+        - Fixed profile icon gradient bug
+        - Profile icon now uses opacity for highlighting
+        - Ring gradient removed from profile area
+        
+        INSTALLATION:
+        -------------
+        1. Copy men.rpx to: SD:/wiiu/environments/aroma/men.rpx
+        2. (Optional) Backup your current men.rpx first
+        3. Restart your Wii U
+        
+        NOTES:
+        ------
+        This build includes the profile icon fix where the selection
+        ring no longer appears permanently. The profile icon is now
+        highlighted via opacity (100% when focused, 90% otherwise).
+        
+        Build log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        EOF
+        
+        cd "WiiUNX2-$VERSION" && zip -r "../WiiUNX2-$VERSION.zip" * && cd ..
+    
+    - name: Upload build
+      uses: actions/upload-artifact@v4
+      with:
+        name: WiiUNX2-${{ github.event.inputs.version_tag }}
+        path: WiiUNX2-*.zip
+        retention-days: 90
+    
+    - name: Summary
+      run: |
+        echo "## Build Complete! ✅" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Version:** ${{ github.event.inputs.version_tag }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Changes" >> $GITHUB_STEP_SUMMARY
+        echo "- 🔧 Fixed profile icon gradient ring bug" >> $GITHUB_STEP_SUMMARY
+        echo "- ✨ Profile uses opacity (100%/90%) for highlighting" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Download the artifact from the Actions tab above! 📦" >> $GITHUB_STEP_SUMMARY

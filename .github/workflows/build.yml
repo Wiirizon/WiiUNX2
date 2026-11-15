@@ -1,0 +1,127 @@
+name: Build WiiUNX2
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'launcher/**'
+      - 'dependencies/**'
+      - '.github/workflows/build.yml'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Setup devkitPPC
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget
+        wget https://github.com/devkitPro/pacman/releases/download/v6.0.2/devkitpro-pacman.amd64.deb
+        sudo dpkg -i devkitpro-pacman.amd64.deb
+        sudo dkp-pacman -Sy
+        sudo dkp-pacman -S --noconfirm wii-dev wiiu-dev ppc-freetype ppc-glm ppc-libgd ppc-libjpeg-turbo ppc-libpng ppc-libmad ppc-libvorbisidec ppc-libogg ppc-bzip2 ppc-zlib
+    
+    - name: Set environment variables
+      run: |
+        echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
+        echo "DEVKITPPC=/opt/devkitpro/devkitPPC" >> $GITHUB_ENV
+        echo "/opt/devkitpro/tools/bin" >> $GITHUB_PATH
+    
+    - name: Build libgui
+      working-directory: dependencies/libgui
+      run: make -j$(nproc)
+    
+    - name: Build librpxloader
+      working-directory: dependencies/librpxloader
+      run: make -j$(nproc)
+    
+    - name: Build libwuhbutils
+      working-directory: dependencies/libwuhbutils
+      run: make -j$(nproc)
+    
+    - name: Build launcher
+      working-directory: launcher
+      run: make -j$(nproc)
+    
+    - name: Get version info
+      id: version
+      run: |
+        # Extract version from README or use commit hash
+        if [ -f launcher/VERSION ]; then
+          VERSION=$(cat launcher/VERSION)
+        else
+          VERSION="dev-$(git rev-parse --short HEAD)"
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Building version: $VERSION"
+    
+    - name: Create build artifact
+      run: |
+        mkdir -p build-output
+        cp launcher/men.rpx build-output/
+        cp launcher/men.elf build-output/ || true
+        
+        # Create a simple info file
+        cat > build-output/BUILD_INFO.txt << EOF
+        WiiUNX2 Build Information
+        =========================
+        Version: ${{ steps.version.outputs.version }}
+        Commit: ${{ github.sha }}
+        Branch: ${{ github.ref_name }}
+        Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        Builder: GitHub Actions
+        
+        Changes:
+        - Fixed profile icon gradient bug (no longer permanently visible)
+        - Profile icon uses opacity (100%/90%) for prominence instead of ring
+        
+        To install:
+        1. Extract men.rpx to SD:/wiiu/environments/aroma/
+        2. Restart your Wii U
+        
+        Build logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        EOF
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: WiiUNX2-${{ steps.version.outputs.version }}
+        path: build-output/
+        retention-days: 90
+    
+    - name: Create release on tag
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          build-output/men.rpx
+          build-output/BUILD_INFO.txt
+        body: |
+          ## WiiUNX2 ${{ steps.version.outputs.version }}
+          
+          ### Changes in this build:
+          - Fixed profile icon gradient ring bug - no longer permanently visible
+          - Profile icon now uses opacity for prominence (100% focused, 90% unfocused)
+          
+          ### Installation:
+          1. Download `men.rpx`
+          2. Copy to `SD:/wiiu/environments/aroma/men.rpx`
+          3. Restart your Wii U
+          
+          ### Build Information:
+          - Commit: `${{ github.sha }}`
+          - Built: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          - Automated build via GitHub Actions
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

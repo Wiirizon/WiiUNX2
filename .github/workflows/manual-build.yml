@@ -1,4 +1,4 @@
-name: Manual Build
+﻿name: Manual Build
 
 on:
   workflow_dispatch:
@@ -11,26 +11,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: devkitpro/devkitppc:latest
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
         submodules: recursive
-    
-    - name: Setup devkitPPC
-      run: |
-        wget https://apt.devkitpro.org/install-devkitpro-pacman
-        chmod +x ./install-devkitpro-pacman
-        sudo ./install-devkitpro-pacman
-        sudo dkp-pacman -Sy
-        sudo dkp-pacman -S --noconfirm wii-dev wiiu-dev ppc-freetype ppc-glm ppc-libgd ppc-libjpeg-turbo ppc-libpng ppc-libmad ppc-libvorbisidec ppc-libogg ppc-bzip2 ppc-zlib
-    
-    - name: Set environment variables
-      run: |
-        echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
-        echo "DEVKITPPC=/opt/devkitpro/devkitPPC" >> $GITHUB_ENV
-        echo "/opt/devkitpro/tools/bin" >> $GITHUB_PATH
     
     - name: Build all dependencies and launcher
       run: |

@@ -19,6 +19,9 @@ jobs:
       with:
         submodules: recursive
     
+    - name: Fix git ownership
+      run: git config --global --add safe.directory /__w/WiiUNX2/WiiUNX2
+    
     - name: Build all dependencies and launcher
       run: |
         cd dependencies/libgui && make -j$(nproc)

@@ -229,7 +229,7 @@ void GameIcon::draw(CVideo *pVideo, const glm::mat4 &projectionMtx, const glm::m
         if (bSelected) {
             strokeFractalEnable = 0;
 
-            const float pulse                = selectionPulseScale(static_cast<uint32_t>(OSTicksToMilliseconds(OSGetSystemTime())));
+            const float pulse                = selectionPulseScale(OSTicksToMilliseconds(OSGetSystemTime()));
             const glm::vec4 outerColorPulsed = pulseRgb(selectionBlurOuterColorIntensity, pulse);
             const glm::vec4 innerColorPulsed = pulseRgb(selectionBlurInnerColorIntensity, pulse);
 

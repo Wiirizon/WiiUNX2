@@ -1,4 +1,4 @@
-/****************************************************************************
+﻿/****************************************************************************
  * Copyright (C) 2015 Dimok
  *
  * This program is free software: you can redistribute it and/or modify
@@ -142,9 +142,9 @@ public:
     };
 
 private:
-    static int32_t threadCallback(int32_t argc, const char **argv) {
+    static int threadCallback(int argc, void *arg) {
         //! After call to start() continue with the internal function
-        ((CThread *) argv)->executeThread();
+        ((CThread *) arg)->executeThread();
         return 0;
     }
 
@@ -156,3 +156,4 @@ private:
 };
 
 #endif
+

@@ -44,7 +44,7 @@ launch dates are stored locally on SD and never uploaded. Custom diagnostics
 are disabled by default; see [SECURITY.md](SECURITY.md).
 
 The on-screen search keyboard uses a QWERTY letter layout. The selected
-software tile has a slow, subtle color drift on its existing gradient outline,
+software tile has a slow, subtle brightness pulse on its existing gradient outline,
 and the active user avatar has a circular accent ring.
 
 ## Build and validate

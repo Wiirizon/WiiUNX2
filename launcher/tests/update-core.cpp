@@ -572,38 +572,40 @@ void testRateLimitReset() {
     CHECK(nx::rateLimitWaitSeconds(429,both,kNow)==7);
 }
 
-// ---- isSafeInstallPath / backupName -----------------------------------------------------------
+// ---- installPathFor / backupName -------------------------------------------------------------
 
-void testInstallPathAccepts() {
-    CHECK(nx::isSafeInstallPath("men.rpx"));
-    CHECK(nx::isSafeInstallPath("wiiu/environments/aroma-wiiunx2/men.rpx"));
-    CHECK(nx::isSafeInstallPath("wiiu/environments/aroma-wiiunx2/modules/setup/00_mocha.rpx"));
-    CHECK(nx::isSafeInstallPath("wiiu/environments/aroma-wiiunx2/a-b_c.txt"));
-    const std::string prefix="wiiu/environments/aroma-wiiunx2/";
-    CHECK(nx::isSafeInstallPath(prefix+std::string(200-prefix.size(),'a')));
+void testInstallPathMapsOnlyTheReleaseEntry() {
+    // Must match the entry written by launcher/tools/Package-Release.mjs.
+    CHECK(nx::installPathFor("sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx")=="wiiu/environments/aroma-wiiunx2/men.rpx");
 }
 
-void testInstallPathRejects() {
+void testInstallPathRejectsEverythingElse() {
     const char *bad[]={
-        "","../x","wiiu/../../x","/abs","C:/x","a\\b","men.rpx/","men.rpx\\","wiiu/environments/aroma-wiiunx2/",
-        "wiiu/environments/aroma-wiiunx2/./x","wiiu/environments/aroma-wiiunx2//x",
-        "wiiu/environments/aroma-wiiunx2/../x","wiiu/environments/aroma-wiiunx2/x/","wiiu/environments/other/men.rpx",
-        "MEN.RPX","men.rpx.bak","./men.rpx","wiiu/environments/aroma-wiiunx2","wiiu/environments/aroma-wiiunx2x/men.rpx",
-        "wiiu\\environments\\aroma-wiiunx2\\men.rpx","wiiu/environments/aroma-wiiunx2/x:y","men.rpx:stream","C:men.rpx",
-        "x\x01","men.rpx\x7f","men.rpx\t","men.rpx\n","wiiu/environments/aroma-wiiunx2/\xc3\xa9.rpx",
-        "..",".",
-        "men.rpx/..","wiiu/",
-        "wiiu/environments/aroma-wiiunx2/..",
+        "","men.rpx","men.rpx.sha256","sd-layout/men.rpx","sd-layout/wiiu/environments/aroma-wiiunx2/",
+        "wiiu/environments/aroma-wiiunx2/men.rpx","wiiu/environments/aroma-wiiunx2/",
+        "sd-layout/wiiu/environments/aroma-wiiunx2/modules/setup/00_mocha.rpx",
+        "wiiu/environments/aroma-wiiunx2/modules/setup/00_mocha.rpx",
+        "sd-layout/wiiu/environments/aroma-wiiunx2/a-b_c.txt","sd-layout/wiiu/environments/other/men.rpx",
+        "sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx.bak","sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx/",
+        "sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx/..","sd-layout/wiiu/environments/aroma-wiiunx2/./men.rpx",
+        "sd-layout/wiiu/environments/aroma-wiiunx2//men.rpx","sd-layout/wiiu/environments/aroma-wiiunx2/../men.rpx",
+        "sd-layout/../sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx","../sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx",
+        "/sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx","C:/sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx",
+        "sd-layout\\wiiu\\environments\\aroma-wiiunx2\\men.rpx","sd-layout/wiiu\\environments/aroma-wiiunx2/men.rpx",
+        "SD-LAYOUT/wiiu/environments/aroma-wiiunx2/men.rpx","sd-layout/wiiu/environments/aroma-wiiunx2/MEN.RPX",
+        "sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx:stream","C:men.rpx",
+        "sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx\t","sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx\n",
+        "sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx ","x/sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx",
+        "sd-layout/wiiu/environments/aroma-wiiunx2/\xc3\xa9.rpx","..",".","wiiu/..",
     };
     for(const char *name:bad) {
-        const bool ok=nx::isSafeInstallPath(name);
-        if(ok) std::fprintf(stderr,"accepted but should reject: [%s]\n",name);
-        CHECK(!ok);
+        const std::string destination=nx::installPathFor(name);
+        if(!destination.empty()) std::fprintf(stderr,"mapped but should reject: [%s] -> [%s]\n",name,destination.c_str());
+        CHECK(destination.empty());
     }
-    const std::string prefix="wiiu/environments/aroma-wiiunx2/";
-    CHECK(!nx::isSafeInstallPath(prefix+std::string(200-prefix.size()+1,'a')));
-    CHECK(!nx::isSafeInstallPath(std::string("men.rpx\0x",9)));
-    CHECK(!nx::isSafeInstallPath(std::string(201,'a')));
+    const std::string longName="sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx"+std::string(201,'a');
+    CHECK(nx::installPathFor(longName).empty());
+    CHECK(nx::installPathFor(std::string("sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx\0x",51)).empty());
 }
 
 void testBackupName() {
@@ -658,8 +660,8 @@ int main() {
     testRateLimitNonLimitStatuses();
     testRateLimitDefaultsAndRetryAfter();
     testRateLimitReset();
-    testInstallPathAccepts();
-    testInstallPathRejects();
+    testInstallPathMapsOnlyTheReleaseEntry();
+    testInstallPathRejectsEverythingElse();
     testBackupName();
     if(failures) {
         std::fprintf(stderr,"%d check(s) failed\n",failures);

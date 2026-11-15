@@ -20,10 +20,9 @@ jobs:
     
     - name: Setup devkitPPC
       run: |
-        sudo apt-get update
-        sudo apt-get install -y wget
-        wget https://github.com/devkitPro/pacman/releases/download/v6.0.2/devkitpro-pacman.amd64.deb
-        sudo dpkg -i devkitpro-pacman.amd64.deb
+        wget https://apt.devkitpro.org/install-devkitpro-pacman
+        chmod +x ./install-devkitpro-pacman
+        sudo ./install-devkitpro-pacman
         sudo dkp-pacman -Sy
         sudo dkp-pacman -S --noconfirm wii-dev wiiu-dev ppc-freetype ppc-glm ppc-libgd ppc-libjpeg-turbo ppc-libpng ppc-libmad ppc-libvorbisidec ppc-libogg ppc-bzip2 ppc-zlib
     

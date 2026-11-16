@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {readWav,convertWav} from '../tools/Import-Sounds.mjs';
 function wave({channels=1,format=3,bits=32,rate=48000,frames=480}={}) {
   const bytes=bits/8*channels*frames,b=Buffer.alloc(44+bytes);
@@ -29,4 +30,14 @@ test('reject truncated chunks, invalid alignment and unsupported formats',()=>{
   const bad=Buffer.from(b);bad.writeUInt16LE(2,32);assert.throws(()=>readWav(bad));
   assert.throws(()=>readWav(wave({format:6})));
   assert.throws(()=>readWav(wave({frames:0})));
+});
+test('bundled original UI cues are present as bounded PCM16 assets',()=>{
+  const files=['uiMoveDefault.bin','uiClickDefault.bin','uiBackDefault.bin'];
+  const cues=files.map(file=>fs.readFileSync(new URL(`../data/sounds/${file}`,import.meta.url)));
+  for(const cue of cues) {
+    assert.ok(cue.length>=4 && cue.length<=32000*2*5 && cue.length%2===0);
+    assert.ok(cue.some(byte=>byte!==0));
+  }
+  assert.notDeepEqual(cues[0],cues[1]);
+  assert.notDeepEqual(cues[1],cues[2]);
 });

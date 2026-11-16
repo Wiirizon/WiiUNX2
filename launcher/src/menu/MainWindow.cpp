@@ -75,7 +75,7 @@ MainWindow::MainWindow(int32_t w, int32_t h, MenuMusic *sound)
         return std::unique_ptr<GuiImage>(new GuiImage(data));
     };
     for (auto name:dockFiles) dock.push_back(asset(name));
-    profile=asset("nxProfile.png"); ring=asset("nxRing.png");
+    profile=asset("nxProfile.png");profileRing=asset("nxProfileRing.png");ring=asset("nxRing.png");
     network=asset("nxNetwork.png");
     tileBlank=asset("nxTileBlank.png");tileFocus=asset("nxTileFocus.png");tileShadow=asset("nxTileShadow.png");dockSurface=asset("nxDock.png");
     modalPanel=asset("nxModalPanel.png");accountPanel=asset("nxAccountPanel.png");
@@ -280,15 +280,16 @@ void MainWindow::draw(CVideo *v) {
     auto current=std::find_if(accounts.begin(),accounts.end(),[this](const Account &a){return a.slot==activeSlot;});
     if(current!=accounts.end() && current->image) {
         current->image->setScaleX(52.f/current->data->getWidth());current->image->setScaleY(52.f/current->data->getHeight());
-        // Make profile icon more prominent when in its focus row, but without the gradient ring
-        if(focusRow==2) current->image->setAlpha(1.f);
-        else current->image->setAlpha(0.9f);
+        current->image->setAlpha(1.f);
         drawImage(*current->image,v,80,75);
     } else {
-        // Make default profile icon more prominent when in its focus row, but without the gradient ring
-        if(focusRow==2) profile->setAlpha(1.f);
-        else profile->setAlpha(0.9f);
+        profile->setAlpha(1.f);
         profile->setScale(52.f/64);drawImage(*profile,v,80,75);profile->setScale(1);
+    }
+    if(focusRow==2) {
+        profileRing->setScale(68.f/72.f);
+        drawImage(*profileRing,v,80,75);
+        profileRing->setScale(1.f);
     }
     if(focusRow==2) drawText(profileName,v,128,75);
     drawText(clockText,v,1070,76);

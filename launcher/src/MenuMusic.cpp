@@ -40,8 +40,12 @@ void MenuMusic::start() {
     AXSetVoiceState(voice,AX_VOICE_STATE_PLAYING);AXVoiceEnd(voice);
     DEBUG_FUNCTION_LINE("Menu music started: original PCM loop, TV and GamePad");
     const char *files[]={"uiMove.bin","uiClick.bin","uiBack.bin"};
+    const char *defaults[]={"uiMoveDefault.bin","uiClickDefault.bin","uiBackDefault.bin"};
     for(int i=0;i<3;++i) {
         auto bytes=Resources::GetFileSize(files[i]);auto *source=Resources::GetFile(files[i]);
+        if(!source || bytes<4 || bytes>32000*2*5 || bytes%2) {
+            source=Resources::GetFile(defaults[i]);bytes=Resources::GetFileSize(defaults[i]);
+        }
         if(!source || bytes<4 || bytes>32000*2*5 || bytes%2) continue;
         effects[i].samples=memalign(64,(bytes+63)&~63);
         if(effects[i].samples) {

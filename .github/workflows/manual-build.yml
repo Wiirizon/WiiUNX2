@@ -23,7 +23,7 @@ jobs:
       run: git config --global --add safe.directory /__w/WiiUNX2/WiiUNX2
     
     - name: Install Wii U HTTPS library
-      run: pacman -S --noconfirm wiiu-curl
+      run: dkp-pacman -Sy --noconfirm --needed wiiu-curl
 
     - name: Build all dependencies and launcher
       run: |

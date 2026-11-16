@@ -414,7 +414,7 @@ function isInside(child, parent) {
 
 function releaseNames(version) {
   const zip = `WiiUNX2-menu-v${version}.zip`;
-  return {zip, sha: `${zip}.sha256`};
+  return {zip, sha: `${zip}.sha256`, rpx: 'men.rpx', rpxSha: 'men.rpx.sha256'};
 }
 
 function checkOutput(root, out, version, problems) {
@@ -423,7 +423,7 @@ function checkOutput(root, out, version, problems) {
   }
   if (version === undefined) return;
   const names = releaseNames(version);
-  for (const name of [names.zip, names.sha]) {
+  for (const name of [names.zip, names.sha, names.rpx, names.rpxSha]) {
     if (fs.existsSync(path.join(out, name))) problems.push(`--out: ${name} already exists`);
   }
 }
@@ -518,7 +518,8 @@ function renderInstall(version) {
 
 This package contains the WiiUNX2 menu binary (men.rpx) for Aroma on Wii U.
 It is an unsigned build and is not official Nintendo software. It was not run
-on a console unless VALIDATION.md says so.
+on a console unless VALIDATION.md says so. GitHub releases also provide
+men.rpx and men.rpx.sha256 as standalone downloads.
 
 ## 1. Verify the package
 
@@ -533,39 +534,39 @@ On Windows PowerShell:
 Compare the hash with the first field of men.rpx.sha256. Case does not matter.
 Every line printed by sha256sum must end with OK.
 
-## 2. Install an isolated test environment
+## 2. Install into the normal Aroma environment
 
 Insert the SD card, then run from the package folder:
 
     powershell -ExecutionPolicy Bypass -File .\\Install-SD.ps1 -SDRoot E:\\
 
-This creates wiiu/environments/aroma-wiiunx2 as a copy of the stock aroma
-environment (its plugins folder is not copied; an empty one is created) with
-this men.rpx. The stock aroma environment is not changed.
-The stock environment must contain modules/setup/00_mocha.rpx.
-When EnvironmentLoader starts, hold X and choose aroma-wiiunx2.
+This copies men.rpx to wiiu/environments/aroma/men.rpx. The target must be an
+Aroma environment containing modules/setup/00_mocha.rpx. If men.rpx already
+exists, the installer creates and verifies a dated backup before replacing it.
 
-## 3. Update an existing test environment
+## 3. Update the normal Aroma environment
 
-    powershell -ExecutionPolicy Bypass -File .\\Update-SD.ps1 -SDRoot E:\\ -Environment aroma-wiiunx2
+    powershell -ExecutionPolicy Bypass -File .\\Update-SD.ps1 -SDRoot E:\\
 
-The target environment must already contain modules/setup/00_mocha.rpx.
-Update-SD.ps1 first copies the current men.rpx to men.rpx.backup-<date>-<id>,
-then replaces the file and checks the new hash. Plugins and modules are not changed.
+Update-SD.ps1 defaults to the normal aroma environment. It first copies an
+existing men.rpx to men.rpx.backup-<date>-<id>, then replaces the file and
+checks the new hash. Plugins and modules are not changed.
 
-## 4. Manual copy (advanced)
+## 4. Install the optional experimental StyleMiiU plugin
 
-sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx is only the binary. Use it only
-when the target environment already exists and contains modules/setup/00_mocha.rpx.
-Copy any existing men.rpx in that environment to a backup name first, then copy
-this file over it, then check the hash as in section 1.
+[Download stylemiiu.wps directly from the latest StyleMiiU RPX release](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX/releases/latest/download/stylemiiu.wps).
+Follow the [fork's instructions](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX):
+install the WPS in the chosen environment's plugins folder, put this package's
+men.rpx at SD:/wiiu/themes/WiiUNX2/men.rpx, and select it in the WUPS menu
+with Mashup themes turned off. This route requires Aroma's RPXLoadingModule
+and remains experimental.
 
-## 5. Rollback
+## 5. Remove WiiUNX2 or roll back
 
 1. Power off the console before you change files on the SD card.
-2. Boot the original aroma environment. It is the default; keep it that way.
-3. To restore an earlier binary, copy a men.rpx.backup-* file back to men.rpx in the same environment.
-4. Delete wiiu/environments/aroma-wiiunx2 only after power off, and only when you no longer need it.
+2. Restore the men.rpx.backup-* file created by the installer to wiiu/environments/aroma/men.rpx.
+3. If there was no previous men.rpx, delete the WiiUNX2 men.rpx you added.
+4. To disable the plugin route, remove stylemiiu.wps from the environment's plugins folder or select a regular theme.
 5. Never edit NAND, system files or menu titles. This package does not touch them.
 
 ## 6. Contents
@@ -624,7 +625,7 @@ function baseFiles(inputs) {
   const rpxFiles = [
     {path: 'men.rpx', data: inputs.rpx.data},
     {path: 'men.rpx.sha256', data: text(`${inputs.rpx.sha256}  men.rpx\n`)},
-    {path: 'sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx', data: inputs.rpx.data},
+    {path: 'sd-layout/wiiu/environments/aroma/men.rpx', data: inputs.rpx.data},
   ];
   const top = TOP_FILES.map(([name, rel]) => ({path: name, data: inputs.sources.get(rel)}));
   const licences = LICENCE_FILES.map(([name, rel]) => ({path: `licenses/${name}`, data: inputs.sources.get(rel)}));
@@ -669,10 +670,14 @@ function writeRelease(inputs, entries) {
   const digest = writeStoredZip(archive, entries);
   const shaFile = path.join(inputs.out, names.sha);
   writeNewFile(shaFile, text(`${digest}  ${names.zip}\n`));
+  const rpxFile = path.join(inputs.out, names.rpx);
+  writeNewFile(rpxFile, inputs.rpx.data);
+  const rpxShaFile = path.join(inputs.out, names.rpxSha);
+  writeNewFile(rpxShaFile, text(`${inputs.rpx.sha256}  ${names.rpx}\n`));
   const warnings = inputs.homePathCount > 0
     ? [`men.rpx contains ${inputs.homePathCount} home-directory-like string(s); recorded in RELEASE-INFO.json and VALIDATION.md`]
     : [];
-  return {archive, archiveSha256File: shaFile, fileCount: entries.length - 1, generatedExcluded: inputs.generated, warnings};
+  return {archive, archiveSha256File: shaFile, rpx: rpxFile, rpxSha256File: rpxShaFile, fileCount: entries.length - 1, generatedExcluded: inputs.generated, warnings};
 }
 
 export function buildRelease(opts = {}) {

@@ -424,8 +424,8 @@ inline int rateLimitWaitSeconds(int status,const std::map<std::string,std::strin
 // Package-Release.mjs writes. Every other name (root men.rpx, modules, traversal, separators, case or length
 // variants) returns an empty string: fail closed.
 inline std::string installPathFor(const std::string &entryName) {
-    static const std::string kArchiveEntry="sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx";
-    static const std::string kInstallDestination="wiiu/environments/aroma-wiiunx2/men.rpx";
+    static const std::string kArchiveEntry="sd-layout/wiiu/environments/aroma/men.rpx";
+    static const std::string kInstallDestination="wiiu/environments/aroma/men.rpx";
     return entryName==kArchiveEntry?kInstallDestination:std::string();
 }
 

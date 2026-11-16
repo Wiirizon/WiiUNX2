@@ -58,6 +58,7 @@ jobs:
         mkdir -p build-output
         cp launcher/men.rpx build-output/
         cp launcher/men.elf build-output/ || true
+        sha256sum build-output/men.rpx | awk '{print $1 "  men.rpx"}' > build-output/men.rpx.sha256
         
         # Create a simple info file
         cat > build-output/BUILD_INFO.txt << EOF
@@ -69,13 +70,12 @@ jobs:
         Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
         Builder: GitHub Actions
         
-        Changes:
-        - Fixed profile icon gradient bug (no longer permanently visible)
-        - Profile icon uses opacity (100%/90%) for prominence instead of ring
-        
         To install:
-        1. Extract men.rpx to SD:/wiiu/environments/aroma/
-        2. Restart your Wii U
+        1. Power off the Wii U and back up any existing SD:/wiiu/environments/aroma/men.rpx.
+        2. Copy men.rpx to SD:/wiiu/environments/aroma/men.rpx.
+        3. To remove WiiUNX2, restore the backup or delete the file if none existed.
+
+        The optional experimental StyleMiiU plugin route is documented in the README and released separately.
         
         Build logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         EOF
@@ -93,22 +93,22 @@ jobs:
       with:
         files: |
           build-output/men.rpx
+          build-output/men.rpx.sha256
           build-output/BUILD_INFO.txt
         body: |
           ## WiiUNX2 ${{ steps.version.outputs.version }}
-          
-          ### Changes in this build:
-          - Fixed profile icon gradient ring bug - no longer permanently visible
-          - Profile icon now uses opacity for prominence (100% focused, 90% unfocused)
-          
-          ### Installation:
-          1. Download `men.rpx`
-          2. Copy to `SD:/wiiu/environments/aroma/men.rpx`
-          3. Restart your Wii U
+
+          ### Install in the normal Aroma environment
+          1. Download `men.rpx` and `men.rpx.sha256`.
+          2. Power off the Wii U. Back up any existing `SD:/wiiu/environments/aroma/men.rpx`.
+          3. Verify the checksum, then copy `men.rpx` to `SD:/wiiu/environments/aroma/men.rpx`.
+          4. To remove WiiUNX2, restore the backup; if no file existed before installation, delete the `men.rpx` you added.
+
+          ### Optional experimental StyleMiiU RPX route
+          See the README for this separate plugin-based option. It requires Aroma's RPXLoadingModule and remains experimental.
           
           ### Build Information:
           - Commit: `${{ github.sha }}`
-          - Built: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
           - Automated build via GitHub Actions
         draft: false
         prerelease: false

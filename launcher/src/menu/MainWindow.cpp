@@ -75,7 +75,7 @@ MainWindow::MainWindow(int32_t w, int32_t h, MenuMusic *sound)
         return std::unique_ptr<GuiImage>(new GuiImage(data));
     };
     for (auto name:dockFiles) dock.push_back(asset(name));
-    profile=asset("nxProfile.png");profileRing=asset("nxProfileRing.png");ring=asset("nxRing.png");
+    profile=asset("nxProfile.png");profileBacking=asset("nxProfileBacking.png");ring=asset("nxRing.png");
     network=asset("nxNetwork.png");
     tileBlank=asset("nxTileBlank.png");tileFocus=asset("nxTileFocus.png");tileShadow=asset("nxTileShadow.png");dockSurface=asset("nxDock.png");
     modalPanel=asset("nxModalPanel.png");accountPanel=asset("nxAccountPanel.png");
@@ -117,7 +117,7 @@ MainWindow::~MainWindow() {
     gameList.titleAdded.disconnect(this);
     gameList.titleUpdated.disconnect(this);
     gameList.titleListChanged.disconnect(this);
-    tiles.clear(); dock.clear();prompts.clear();modalPrompts.clear();searchPrompts.clear();accountPrompts.clear(); profile.reset(); ring.reset(); network.reset();tileBlank.reset();tileFocus.reset();tileShadow.reset();dockSurface.reset();
+    tiles.clear(); dock.clear();prompts.clear();modalPrompts.clear();searchPrompts.clear();accountPrompts.clear(); profile.reset();profileBacking.reset();ring.reset();network.reset();tileBlank.reset();tileFocus.reset();tileShadow.reset();dockSurface.reset();
     modalPanel.reset();accountPanel.reset();accountCard.reset();accountFocus.reset();searchPanel.reset();keyCard.reset();keyFocus.reset();
     for(auto *data:assetData) Resources::RemoveImageData(data);
     if(acReady) ACFinalize();
@@ -276,9 +276,13 @@ void MainWindow::process() {
 }
 void MainWindow::draw(CVideo *v) {
     std::lock_guard<std::recursive_mutex> guard(tilesMutex);
+    const float gradientAngle=float(frame%480)*0.75f;
     drawImage(background,v,640,360);
     auto current=std::find_if(accounts.begin(),accounts.end(),[this](const Account &a){return a.slot==activeSlot;});
     if(current!=accounts.end() && current->image) {
+        profileBacking->setScale(60.f/64.f);
+        drawImage(*profileBacking,v,80,75);
+        profileBacking->setScale(1.f);
         current->image->setScaleX(52.f/current->data->getWidth());current->image->setScaleY(52.f/current->data->getHeight());
         current->image->setAlpha(1.f);
         drawImage(*current->image,v,80,75);
@@ -287,9 +291,11 @@ void MainWindow::draw(CVideo *v) {
         profile->setScale(52.f/64);drawImage(*profile,v,80,75);profile->setScale(1);
     }
     if(focusRow==2) {
-        profileRing->setScale(68.f/72.f);
-        drawImage(*profileRing,v,80,75);
-        profileRing->setScale(1.f);
+        ring->setAngle(gradientAngle);
+        ring->setScale(68.f/84.f);
+        drawImage(*ring,v,80,75);
+        ring->setScale(1.f);
+        ring->setAngle(0.f);
     }
     if(focusRow==2) drawText(profileName,v,128,75);
     drawText(clockText,v,1070,76);
@@ -324,7 +330,11 @@ void MainWindow::draw(CVideo *v) {
     drawImage(*dockSurface,v,640,560);
     for(int i=0;i<int(dock.size());++i) {
         float x=nx::dockFirst+i*nx::dockStep;
-        if(focusRow==1 && i==dockIndex) drawImage(*ring,v,x,560);
+        if(focusRow==1 && i==dockIndex) {
+            ring->setAngle(gradientAngle);
+            drawImage(*ring,v,x,560);
+            ring->setAngle(0.f);
+        }
         drawImage(*dock[i],v,x,560);
     }
     drawText(label,v,nx::dockFirst+dockIndex*nx::dockStep,626);

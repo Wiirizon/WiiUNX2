@@ -38,6 +38,7 @@ jobs:
         
         mkdir -p "WiiUNX2-$VERSION"
         cp launcher/men.rpx "WiiUNX2-$VERSION/"
+        sha256sum "WiiUNX2-$VERSION/men.rpx" | awk -v file="men.rpx" '{print $1 "  " file}' > "WiiUNX2-$VERSION/men.rpx.sha256"
         
         cat > "WiiUNX2-$VERSION/README.txt" << EOF
         WiiUNX2 Custom Build
@@ -46,34 +47,28 @@ jobs:
         Built: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
         Commit: ${{ github.sha }}
         
-        CHANGES:
-        --------
-        - Fixed profile icon gradient bug
-        - Profile icon now uses opacity for highlighting
-        - Ring gradient removed from profile area
-        
         INSTALLATION:
         -------------
-        1. Copy men.rpx to: SD:/wiiu/environments/aroma/men.rpx
-        2. (Optional) Backup your current men.rpx first
-        3. Restart your Wii U
-        
-        NOTES:
-        ------
-        This build includes the profile icon fix where the selection
-        ring no longer appears permanently. The profile icon is now
-        highlighted via opacity (100% when focused, 90% otherwise).
+        1. Power off the Wii U and back up any existing SD:/wiiu/environments/aroma/men.rpx.
+        2. Verify men.rpx with men.rpx.sha256, then copy it to SD:/wiiu/environments/aroma/men.rpx.
+        3. To remove WiiUNX2, restore the backup or delete the file if none existed.
+
+        The optional experimental StyleMiiU plugin route is documented in the README and released separately.
         
         Build log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         EOF
         
         cd "WiiUNX2-$VERSION" && zip -r "../WiiUNX2-$VERSION.zip" * && cd ..
+        mkdir -p release-assets
+        cp "WiiUNX2-$VERSION.zip" release-assets/
+        cp "WiiUNX2-$VERSION/men.rpx" "WiiUNX2-$VERSION/men.rpx.sha256" release-assets/
+        cp "WiiUNX2-$VERSION/README.txt" release-assets/BUILD_INFO.txt
     
     - name: Upload build
       uses: actions/upload-artifact@v4
       with:
         name: WiiUNX2-${{ github.event.inputs.version_tag }}
-        path: WiiUNX2-*.zip
+        path: release-assets/
         retention-days: 90
     
     - name: Summary
@@ -83,8 +78,8 @@ jobs:
         echo "**Version:** ${{ github.event.inputs.version_tag }}" >> $GITHUB_STEP_SUMMARY
         echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### Changes" >> $GITHUB_STEP_SUMMARY
-        echo "- 🔧 Fixed profile icon gradient ring bug" >> $GITHUB_STEP_SUMMARY
-        echo "- ✨ Profile uses opacity (100%/90%) for highlighting" >> $GITHUB_STEP_SUMMARY
+        echo "### Installation" >> $GITHUB_STEP_SUMMARY
+        echo "Copy men.rpx into SD:/wiiu/environments/aroma/ after backing up any existing file." >> $GITHUB_STEP_SUMMARY
+        echo "The optional experimental StyleMiiU plugin route is released separately." >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "Download the artifact from the Actions tab above! 📦" >> $GITHUB_STEP_SUMMARY
+        echo "Download the artifact from the Actions tab above for the package zip and standalone men.rpx/checksum assets. 📦" >> $GITHUB_STEP_SUMMARY

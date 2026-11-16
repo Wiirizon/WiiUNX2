@@ -15,6 +15,8 @@ const {ReleaseInputError} = tool;
 const GIT_AVAILABLE = spawnSync('git', ['--version'], {encoding: 'utf8'}).status === 0;
 const VERSION = '0.6.11';
 const ZIP = `WiiUNX2-menu-v${VERSION}.zip`;
+const RPX = 'men.rpx';
+const RPX_SHA = `${RPX}.sha256`;
 const PREFIX = `WiiUNX2-menu-v${VERSION}/`;
 const HEADER = 'launcher/src/common/common.h';
 const SENTINEL = 'sentinel-release-test-value';
@@ -122,7 +124,7 @@ function runRefused(args, options) {
 }
 
 function assertNoArchive(out) {
-  assert.deepEqual(outNames(out).filter(name => /\.(zip|partial|sha256)$/.test(name)), []);
+  assert.deepEqual(outNames(out).filter(name => /\.(zip|rpx|partial|sha256)$/.test(name)), []);
 }
 
 function problemsOf(fn) {
@@ -221,7 +223,7 @@ function expectedNames() {
   const source = SOURCE_FILES.filter(rel => rel !== 'launcher/men.rpx').map(rel => `${PREFIX}source/${rel}`);
   return [
     ...['men.rpx', 'men.rpx.sha256', 'SHA256SUMS', 'RELEASE-INFO.json', 'INSTALL.md', 'VALIDATION.md',
-      'sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx'].map(name => PREFIX + name),
+      'sd-layout/wiiu/environments/aroma/men.rpx'].map(name => PREFIX + name),
     ...TOP_NAMES.map(name => PREFIX + name),
     ...licences, ...portlibs, ...source,
   ].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
@@ -259,6 +261,8 @@ test('T1 happy path: archive, checksums and records are complete', async () => {
     }
     assert.equal(fs.readFileSync(path.join(fx.out, `${ZIP}.sha256`), 'utf8'), `${sha256(zip)}  ${ZIP}\n`);
     const rpxSha = sha256(elfBytes());
+    assert.ok(fs.readFileSync(path.join(fx.out, RPX)).equals(elfBytes()), 'standalone RPX bytes');
+    assert.equal(fs.readFileSync(path.join(fx.out, RPX_SHA), 'utf8'), `${rpxSha}  ${RPX}\n`);
     assert.equal(files.get(`${PREFIX}men.rpx.sha256`).toString('utf8'), `${rpxSha}  men.rpx\n`);
     assertSha256Sums(files);
     assertReleaseInfo(files, rpxSha);
@@ -292,7 +296,7 @@ function assertReleaseInfo(files, rpxSha) {
 }
 
 function assertInstall(text) {
-  for (const needle of ['Install-SD.ps1', 'Update-SD.ps1', '-Environment aroma-wiiunx2', 'sha256sum -c SHA256SUMS', 'men.rpx.backup-']) {
+  for (const needle of ['Install-SD.ps1', 'Update-SD.ps1', 'wiiu/environments/aroma/men.rpx', 'men.rpx and men.rpx.sha256 as standalone downloads', 'stylemiiu.wps', 'sha256sum -c SHA256SUMS', 'men.rpx.backup-']) {
     assert.ok(text.includes(needle), `INSTALL.md mentions ${needle}`);
   }
   assert.match(text, /rollback/i);
@@ -305,7 +309,7 @@ test('T2 determinism: same inputs give identical bytes, regardless of mtimes and
     assert.equal(runTool([...standardArgs({...fx, out: outA})], {cwd: os.tmpdir()}).status, 0);
     touchAll(fx.root, new Date('2001-02-03T04:05:06Z'));
     assert.equal(runTool([...standardArgs({...fx, out: outB})], {cwd: os.tmpdir()}).status, 0);
-    for (const name of [ZIP, `${ZIP}.sha256`]) {
+    for (const name of [ZIP, `${ZIP}.sha256`, RPX, RPX_SHA]) {
       assert.ok(fs.readFileSync(path.join(outA, name)).equals(fs.readFileSync(path.join(outB, name))), `${name} identical`);
     }
     writeFile(fx.root, 'launcher/src/main.cpp', 'int main() { return 1; }\n');
@@ -471,8 +475,8 @@ test('T8 version: malformed, prefixed, pre-release or mismatched values are refu
   });
 });
 
-test('T9 output: existing zip or checksum is refused and left unchanged; out inside launcher is refused', async () => {
-  for (const existing of [ZIP, `${ZIP}.sha256`]) {
+test('T9 output: existing release asset is refused and left unchanged; out inside launcher is refused', async () => {
+  for (const existing of [ZIP, `${ZIP}.sha256`, RPX, RPX_SHA]) {
     await withWork(async fx => {
       writeFile(fx.out, existing, 'previous release\n');
       const result = runRefused(standardArgs(fx));

@@ -25,14 +25,11 @@ Surface 'nxAccountPanel.png' 1120 420 28 'panel'
 Surface 'nxSearchPanel.png' 1120 520 28 'panel'
 Surface 'nxAccountCard.png' 148 164 16 '#F0F1F3'
 Surface 'nxAccountFocus.png' 156 172 20 '' $true
-Asset 'nxProfileRing.png' 72 {
+Asset 'nxProfileBacking.png' 64 {
     param($g)
-    $p=Pen '#C3C7CB' 3.8
-    $g.DrawEllipse($p,5,5,62,62)
-    $p.Dispose()
-    $p=Pen '#FFFFFF' 2.4
-    $g.DrawEllipse($p,6,6,60,60)
-    $p.Dispose()
+    $b=[Drawing.SolidBrush]::new([Drawing.Color]::White)
+    $g.FillEllipse($b,1,1,62,62)
+    $b.Dispose()
 }
 Surface 'nxKeyCard.png' 84 54 10 '#ECEEF1'
 Surface 'nxKeyFocus.png' 90 60 14 '' $true

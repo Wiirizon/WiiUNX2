@@ -18,7 +18,7 @@ static std::mutex bundleMutex;
 static std::string lower(std::string s) {for(char &c:s) if(c>='A'&&c<='Z') c+=32;return s;}
 static bool bundled(const std::string &s) {return s.size()>=5&&lower(s.substr(s.size()-5))==".wuhb";}
 static HomebrewPolicy readPolicy() {
-    // Query the active environment, including custom aroma-wiiunx2 installs.
+    // Query the active environment to find its homebrew policy.
     alignas(64) char environment[256]{};
     alignas(64) int command=0xf9;
     auto handle=IOS_Open("/dev/mcp",IOS_OPEN_READ);

@@ -2,9 +2,11 @@
 
 ## Unreleased
 
+- Draw Mii avatars over a solid white disk and rotate the selected profile/dock gradient ring; document the Aroma environment and experimental plugin install options.
+- Investigate softer TV rendering compared with the GamePad (issue #38).
 - Restore menu sound effects in clean builds by bundling the original generated cues, with local effects retained as optional overrides.
 - Add a white circular outline around the profile icon while its row is focused, and make the selected-tile brightness pulse more visible.
-- Updater core (not wired into the menu): the install path is now one exact archive entry, `sd-layout/wiiu/environments/aroma-wiiunx2/men.rpx`, mapped to `wiiu/environments/aroma-wiiunx2/men.rpx`. Other entries, including module files, are rejected instead of accepted by prefix.
+- Updater core (not wired into the menu): the install path is one exact archive entry, `sd-layout/wiiu/environments/aroma/men.rpx`, mapped to `wiiu/environments/aroma/men.rpx`. Other entries, including module files, are rejected instead of accepted by prefix.
 
 ## 0.6.12-rc.3 — Release candidate
 

@@ -44,8 +44,9 @@ launch dates are stored locally on SD and never uploaded. Custom diagnostics
 are disabled by default; see [SECURITY.md](SECURITY.md).
 
 The on-screen search keyboard uses a QWERTY letter layout. The selected
-software tile has a slow, subtle brightness pulse on its existing gradient outline,
-and the active user avatar has a circular accent ring.
+software tile has a brightness pulse on its gradient outline. Mii avatars sit
+on a white circular backing, and the multicolor ring rotates while the profile
+or a dock item is selected.
 
 ## Build and validate
 
@@ -70,30 +71,44 @@ Use `-DevkitPro` when devkitPro is installed outside `C:\devkitPro`.
 Cross-build output is `launcher/men.rpx`; do not commit generated binaries.
 The source-validation workflow is manual and does not publish binaries.
 
-## Installation and rollback
+## Use on console
 
-Build and verify `launcher/men.rpx`, keep the SHA-256 file beside it, and
-review the target SD card before installation. For a safer hardware test,
-install an isolated environment:
+Build and verify `launcher/men.rpx`, keep its SHA-256 file beside it, and
+review the target SD card before installation. Install it into the normal
+Aroma environment:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\launcher\Install-SD.ps1 -SDRoot E:\
 ```
 
-Start `aroma-wiiunx2` through EnvironmentLoader and keep the original Aroma
-environment as the default rollback path. For an existing environment, use
-`Update-SD.ps1`; it creates and verifies a backup before replacing `men.rpx`.
-Power off before removing a failed test environment. Never replace internal
-system files or run simultaneous menu-resource hooks without validation.
+This installs `men.rpx` at `SD:/wiiu/environments/aroma/men.rpx`, backing up
+an existing file before replacing it. To install manually, power off the
+console, back up any existing `men.rpx`, and copy the new file to that path.
+To remove WiiUNX2, power off and restore the backup created during
+installation; if there was no previous `men.rpx`, delete the one you added.
+
+GitHub releases provide `men.rpx` and `men.rpx.sha256` as direct downloads.
+
+For the experimental StyleMiiU RPX route, [download `stylemiiu.wps` directly
+from the fork's latest release](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX/releases/latest/download/stylemiiu.wps).
+Install it in `SD:/wiiu/environments/<environment>/plugins/`, put WiiUNX2 at
+`SD:/wiiu/themes/WiiUNX2/men.rpx`, then select it under **WUPS Menu >
+StyleMiiU RPX > Available Themes** with **Mashup themes** turned off. This
+method requires Aroma's RPXLoadingModule and remains experimental; follow the
+[fork's instructions](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX),
+avoid competing menu-patching plugins during testing, and keep a recovery
+path. Choose either this route or the direct Aroma `men.rpx` install.
+
+`Update-SD.ps1` also updates the normal `aroma` environment and backs up an
+existing `men.rpx` before replacing it. Never replace internal system files.
 
 ## Assets and licensing
 
 Source includes modified libgui and the Aroma RPX loader/WUHB utility client
 libraries. Retain all copyright and license notices. Noto Sans Regular is
 included under SIL OFL 1.1 as a fallback; the console shared font remains
-preferred. The original procedural background music is included. Optional UI
-effects must be supplied locally by users with the necessary rights; see
-[SOUNDS.md](SOUNDS.md).
+preferred. The original procedural background music and UI effects are
+included. Local UI effects can override the bundled cues; see [SOUNDS.md](SOUNDS.md).
 
 Nintendo firmware, game artwork, console dumps, recordings, logs and personal
 play-history files are excluded. Existing customized test ZIPs are not

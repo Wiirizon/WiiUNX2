@@ -8,7 +8,7 @@ import {spawnSync} from 'node:child_process';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const [filter,workDir]=process.argv.slice(2);
 assert.ok(filter&&workDir,'usage: edgebleed-assets.mjs <edgebleed-filter executable> <work directory>');
-const assets=['nxAccountCard.png','nxAccountFocus.png','nxProfileRing.png','nxKeyCard.png','nxKeyFocus.png'];
+const assets=['nxAccountCard.png','nxAccountFocus.png','nxProfileBacking.png','nxKeyCard.png','nxKeyFocus.png'];
 
 function paeth(a,b,c) {
   const p=a+b-c, pa=Math.abs(p-a), pb=Math.abs(p-b), pc=Math.abs(p-c);
@@ -109,17 +109,16 @@ function assertBleedRule(before,after,width,height) {
 let changed=0;
 for(const name of assets) {
   const {width,height,rgba}=decodeRgba(path.join(root,'launcher/data/images',name));
-  if(name==='nxProfileRing.png') {
-    assert.deepEqual([width,height],[72,72]);
-    assert.equal(rgba[(36*width+36)*4+3],0,'profile ring center must remain transparent');
-    let white=0,lightGray=0;
+  if(name==='nxProfileBacking.png') {
+    assert.deepEqual([width,height],[64,64]);
+    assert.deepEqual([...rgba.subarray((32*width+32)*4,(32*width+32)*4+4)],[255,255,255,255]);
+    assert.equal(rgba[3],0,'profile backing corners must remain transparent');
+    let white=0;
     for(let i=0;i<rgba.length;i+=4) {
       if(rgba[i+3]<200) continue;
       if(rgba[i]>245&&rgba[i+1]>245&&rgba[i+2]>245) white++;
-      if(Math.max(rgba[i],rgba[i+1],rgba[i+2])-Math.min(rgba[i],rgba[i+1],rgba[i+2])<=8&&rgba[i]>180&&rgba[i]<220) lightGray++;
     }
-    assert.ok(white>100,'profile focus outline should include a visible white stroke');
-    assert.ok(lightGray>100,'profile focus outline should retain a subtle contrasting edge');
+    assert.ok(white>2000,'Mii avatar backing should be a fully white circle');
   }
   const input=path.join(workDir,`${name}.in.rgba`), output=path.join(workDir,`${name}.out.rgba`);
   fs.writeFileSync(input,rgba);

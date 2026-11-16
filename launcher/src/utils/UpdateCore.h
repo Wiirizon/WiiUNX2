@@ -1,7 +1,6 @@
-// WiiUNX2 GPL-3.0-or-later. Pure updater core (issue #7): no network, file, console or wut dependency.
-// Every input here (release JSON, URLs, headers, archive names, checksum files) is hostile.
+// WiiUNX2 GPL-3.0-or-later. Pure updater validation core: no network, file, console or wut dependency.
+// Every input here (release JSON, URLs, headers and checksum files) is hostile.
 // Functions fail closed: on doubt they return false, an empty string, or a non-update result.
-// No updater exists on console yet; nothing in this header is wired into the application.
 #pragma once
 #include "nlohmann-json.hpp"
 #include <algorithm>
@@ -10,6 +9,7 @@
 #include <cstring>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace nx {
@@ -31,16 +31,16 @@ struct Release {
     std::vector<Asset> assets;
 };
 
-struct Selection {
-    Asset zip,checksum;
+struct UpdateSelection {
+    Asset rpx,checksum;
 };
 
 enum class SelectResult {UpToDate,NoAsset,Invalid,UpdateAvailable};
 
-// Policy caps. kMaxZipBytes is a limit we enforce, not a measured archive size.
+// Policy caps. The updater downloads only the standalone RPX and its checksum.
 constexpr size_t kMaxReleaseJsonBytes=1024*1024;
 constexpr size_t kMaxReleaseAssets=64;
-constexpr uint64_t kMaxZipBytes=64ull*1024*1024;
+constexpr uint64_t kMaxRpxBytes=32ull*1024*1024;
 constexpr uint64_t kMaxChecksumBytes=4096;
 constexpr size_t kMaxUrlBytes=2048;
 constexpr size_t kMaxInstallPathBytes=200;
@@ -176,6 +176,7 @@ inline bool parseAsset(const nlohmann::json &node,Asset &out) {
     if(digest!=node.end()&&!digest->is_null()) {
         if(!digest->is_string()) return false;
         asset.sha256=digestToHex(digest->get<std::string>());
+        if(asset.sha256.empty()) return false;
     }
     out=asset;
     return true;
@@ -255,14 +256,17 @@ inline bool parseLatestRelease(const std::string &text,Release &out) {
 inline bool isAllowedDownloadUrl(const std::string &url) {
     static const std::string kScheme="https://";
     if(url.size()>kMaxUrlBytes||!detail::startsWith(url,kScheme)) return false;
-    for(char c:url) {
+    for(size_t i=0;i<url.size();++i) {
+        const char c=url[i];
         const auto u=static_cast<unsigned char>(c);
-        if(u<=0x20||u>=0x7f||c=='\\'||c=='%') return false;
+        if(u<=0x20||u>=0x7f||c=='\\') return false;
+        if(c=='%'&&(i+2>=url.size()||!detail::isHexDigit(url[i+1])||!detail::isHexDigit(url[i+2]))) return false;
+        if(c=='%') i+=2;
     }
     const size_t authorityEnd=url.find_first_of("/?#",kScheme.size());
     if(authorityEnd==std::string::npos||url[authorityEnd]!='/'||authorityEnd+1>=url.size()) return false;
     const std::string authority=url.substr(kScheme.size(),authorityEnd-kScheme.size());
-    if(authority.find('@')!=std::string::npos) return false;
+    if(authority.find('@')!=std::string::npos||authority.find('%')!=std::string::npos) return false;
     const size_t colon=authority.find(':');
     if(colon==std::string::npos) return detail::isAllowedHost(authority);
     if(authority.substr(colon+1)!="443") return false;
@@ -274,38 +278,44 @@ inline bool isTrustedRedirect(const std::string &from,const std::string &to) {
     return isAllowedDownloadUrl(from)&&isAllowedDownloadUrl(to);
 }
 
-// Result is UpdateAvailable only when `out` is filled. Asset names must be exact: WiiUNX2-menu-v<version>.zip and
-// its .sha256, where <version> is the tag without a leading 'v'. Duplicated names are Invalid.
-inline SelectResult selectAssets(const Release &release,const std::string &currentVersion,Selection &out) {
+// Result is UpdateAvailable only when `out` is filled. Releases must include standalone men.rpx and men.rpx.sha256.
+// Duplicated asset names are Invalid.
+inline SelectResult selectAssets(const Release &release,const std::string &currentVersion,UpdateSelection &out) {
     Version current,latest;
     if(release.draft||!parseVersion(currentVersion,current)||!parseVersion(release.tag,latest)) return SelectResult::Invalid;
     if(compareVersions(latest,current)<=0) return SelectResult::UpToDate;
     // A release flagged as a pre-release is never offered to a user running a stable build.
     if(release.prerelease&&current.pre.empty()) return SelectResult::Invalid;
-    const std::string version=(release.tag[0]=='v')?release.tag.substr(1):release.tag;
-    const std::string zipName="WiiUNX2-menu-v"+version+".zip";
-    const std::string checksumName=zipName+".sha256";
-    size_t zipCount=0,checksumCount=0;
-    const Asset *zip=detail::findAssetNamed(release.assets,zipName,zipCount);
-    const Asset *checksum=detail::findAssetNamed(release.assets,checksumName,checksumCount);
-    if(zipCount>1||checksumCount>1) return SelectResult::Invalid;
-    if(!zip||!checksum) return SelectResult::NoAsset;
-    if(zip->size<1||zip->size>kMaxZipBytes||checksum->size>kMaxChecksumBytes) return SelectResult::Invalid;
-    if(!isAllowedDownloadUrl(zip->downloadUrl)||!isAllowedDownloadUrl(checksum->downloadUrl)) return SelectResult::Invalid;
-    out.zip=*zip;
+    size_t rpxCount=0,checksumCount=0;
+    const Asset *rpx=detail::findAssetNamed(release.assets,"men.rpx",rpxCount);
+    const Asset *checksum=detail::findAssetNamed(release.assets,"men.rpx.sha256",checksumCount);
+    if(rpxCount>1||checksumCount>1) return SelectResult::Invalid;
+    if(!rpx||!checksum) return SelectResult::NoAsset;
+    if(rpx->size<6||rpx->size>kMaxRpxBytes||checksum->size==0||checksum->size>kMaxChecksumBytes) return SelectResult::Invalid;
+    if(!isAllowedDownloadUrl(rpx->downloadUrl)||!isAllowedDownloadUrl(checksum->downloadUrl)) return SelectResult::Invalid;
+    out.rpx=*rpx;
     out.checksum=*checksum;
     return SelectResult::UpdateAvailable;
 }
 
-// First whitespace-delimited field must be exactly 64 hex digits; it is returned lowercase. The rest is ignored.
-// The file name is not checked, so the caller must pair this file with its zip.
-inline bool parseSha256File(const std::string &text,std::string &hex) {
+// Parse a standard checksum line and require its filename to match the asset being checked.
+inline bool parseSha256File(const std::string &text,const std::string &expectedName,std::string &hex) {
     static const char *const kWhitespace=" \t\r\n\v\f";
+    if(text.find('\0')!=std::string::npos||expectedName.empty()) return false;
     const size_t begin=text.find_first_not_of(kWhitespace);
     if(begin==std::string::npos) return false;
-    size_t end=text.find_first_of(kWhitespace,begin);
-    if(end==std::string::npos) end=text.size();
-    return detail::normalizeSha256Hex(text.substr(begin,end-begin),hex);
+    const size_t hashEnd=text.find_first_of(kWhitespace,begin);
+    if(hashEnd==std::string::npos) return false;
+    std::string parsedHash;
+    if(!detail::normalizeSha256Hex(text.substr(begin,hashEnd-begin),parsedHash)) return false;
+    const size_t nameBegin=text.find_first_not_of(kWhitespace,hashEnd);
+    if(nameBegin==std::string::npos) return false;
+    size_t nameEnd=text.find_first_of(kWhitespace,nameBegin);
+    if(nameEnd==std::string::npos) nameEnd=text.size();
+    if(text.compare(nameBegin,nameEnd-nameBegin,expectedName)!=0||nameEnd-nameBegin!=expectedName.size()||
+       text.find_first_not_of(kWhitespace,nameEnd)!=std::string::npos) return false;
+    hex=std::move(parsedHash);
+    return true;
 }
 
 // Streaming SHA-256. The constructor initialises the state; finalHex() may be called once.
@@ -398,6 +408,10 @@ inline bool verifyDownload(const std::string &actualHex,uint64_t actualSize,cons
     return actualSize==expectedSize&&actual==expected;
 }
 
+inline bool isWiiURpxHeader(const uint8_t *bytes,size_t size) {
+    return bytes&&size>=6&&bytes[0]==0x7f&&bytes[1]=='E'&&bytes[2]=='L'&&bytes[3]=='F'&&bytes[4]==1&&bytes[5]==2;
+}
+
 // `headers` must use lowercase keys. Returns 0 for success or non-limit statuses, -1 for non-limit failures
 // (other 4xx/5xx, or out-of-range status), otherwise seconds to wait in 1..3600.
 inline int rateLimitWaitSeconds(int status,const std::map<std::string,std::string> &headers,int64_t nowEpoch) {
@@ -418,15 +432,6 @@ inline int rateLimitWaitSeconds(int status,const std::map<std::string,std::strin
         return clamp(std::stoll(reset->second)-nowEpoch);
     }
     return kDefaultRateWaitSeconds;
-}
-
-// The single archive entry the updater installs, mapped to its SD-relative destination. Matches the entry that
-// Package-Release.mjs writes. Every other name (root men.rpx, modules, traversal, separators, case or length
-// variants) returns an empty string: fail closed.
-inline std::string installPathFor(const std::string &entryName) {
-    static const std::string kArchiveEntry="sd-layout/wiiu/environments/aroma/men.rpx";
-    static const std::string kInstallDestination="wiiu/environments/aroma/men.rpx";
-    return entryName==kArchiveEntry?kInstallDestination:std::string();
 }
 
 // Returns base+".backup-"+stamp, or an empty string when base or stamp is unsafe. Stamp: 1..32 chars of [0-9A-Za-z-].

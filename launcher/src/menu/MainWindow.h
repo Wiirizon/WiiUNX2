@@ -2,6 +2,7 @@
 #pragma once
 #include "game/GameList.h"
 #include "MenuMusic.h"
+#include "utils/UpdateService.h"
 #include <gui/Gui.h>
 #include <memory>
 #include <thread>
@@ -26,6 +27,7 @@ public:
     void unlockGUI() { guiMutex.unlock(); }
 private:
     struct FooterPrompt;
+    enum class ModalAction {None,CheckUpdate,InstallUpdate};
     void handleInput(GuiController *c);
     void requestSound(MenuSound sound);
     MenuMusic *audio=nullptr;
@@ -60,6 +62,9 @@ private:
     void confirmModal();
     void footerAction(size_t action);
     void showOptions();
+    void showActionMessage(const std::string &text,const char *action,ModalAction modalAction);
+    void startUpdateCheck();
+    void startUpdateInstall();
     void activate();
     void launch(uint64_t id);
     void markPlayed(uint64_t id);
@@ -84,6 +89,13 @@ private:
     const Tile &selectedTile() const { return tiles[visible[selected]]; }
     struct IconRead { uint64_t id=0; std::vector<uint8_t> bytes; };
     std::future<IconRead> iconRead;
+    ModalAction modalAction=ModalAction::None;
+    std::future<nx::UpdateCheckResult> updateCheck;
+    std::future<nx::UpdateOperationResult> updateInstall;
+    std::atomic<bool> updateCancel{false};
+    bool updateBusy=false;
+    nx::UpdateSelection pendingUpdate;
+    std::string pendingUpdateVersion;
     std::thread loader;
     std::atomic<bool> stopLoader{false}, loaderDone{false}, loaderFailed{false}, discUnsupportedNotice{false};
     std::mutex pendingMutex;

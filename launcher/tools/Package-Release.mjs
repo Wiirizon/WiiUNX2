@@ -25,6 +25,7 @@ const EXCLUDED_NAMES = new Set(['.git', '.test-output']);
 const GENERATED_PATHS = new Set(['launcher/build', 'launcher/men.rpx', 'launcher/src/resources/filelist.h']);
 const GENERATED_DEPENDENCY_DIR = /^dependencies\/[^/]+\/(?:build|release|lib)(?:\/|$)/;
 const PORTLIB_NAMES = ['ppc-freetype', 'ppc-harfbuzz', 'ppc-libgd', 'ppc-libpng', 'ppc-libjpeg-turbo', 'ppc-libmad', 'ppc-libvorbisidec', 'ppc-libogg', 'ppc-bzip2', 'ppc-brotli', 'ppc-zlib'];
+const WIIU_PORTLIB_NAMES = ['wiiu-curl', 'wiiu-mbedtls'];
 // [name in package, path in repository]
 const TOP_FILES = [
   ['README.md', 'README.md'],
@@ -404,7 +405,11 @@ function readPortlibLicences(dir, problems) {
     problems.push('--portlib-licenses: is required when the DEVKITPRO variable is not set');
     return [];
   }
-  return PORTLIB_NAMES.flatMap(name => readPortlibFolder(dir, name, problems));
+  const wiiuDir = path.resolve(dir, '../../wiiu/licenses');
+  return [
+    ...PORTLIB_NAMES.flatMap(name => readPortlibFolder(dir, name, problems)),
+    ...WIIU_PORTLIB_NAMES.flatMap(name => readPortlibFolder(wiiuDir, name, problems)),
+  ];
 }
 
 function isInside(child, parent) {

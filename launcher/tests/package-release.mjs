@@ -21,6 +21,7 @@ const PREFIX = `WiiUNX2-menu-v${VERSION}/`;
 const HEADER = 'launcher/src/common/common.h';
 const SENTINEL = 'sentinel-release-test-value';
 const PORTLIB_NAMES = ['ppc-freetype', 'ppc-harfbuzz', 'ppc-libgd', 'ppc-libpng', 'ppc-libjpeg-turbo', 'ppc-libmad', 'ppc-libvorbisidec', 'ppc-libogg', 'ppc-bzip2', 'ppc-brotli', 'ppc-zlib'];
+const WIIU_PORTLIB_NAMES = ['wiiu-curl', 'wiiu-mbedtls'];
 const TOP_NAMES = ['README.md', 'LICENSE', 'SECURITY.md', 'SOUNDS.md', 'THIRD-PARTY.md', 'UPSTREAM-REVISIONS.txt', 'COMPATIBILITY.md', 'Install-SD.ps1', 'Update-SD.ps1'];
 const LICENCE_NAMES = ['NotoSans-OFL.txt', 'launcher-LICENSE.txt', 'libgui-COPYING.txt', 'librpxloader-LICENSE.txt', 'libwuhbutils-LICENSE.txt', 'nlohmann-json-LICENSE.txt'];
 const TEXT_FILES = {
@@ -70,8 +71,9 @@ function makeFixture(work, rpxBytes = elfBytes()) {
   writeFile(root, 'launcher/men.rpx', rpxBytes);
   const validation = path.join(work, 'validation.txt');
   fs.writeFileSync(validation, validationFor(sha256(rpxBytes)));
-  const portlibs = path.join(work, 'portlibs');
+  const portlibs = path.join(work, 'portlibs', 'ppc', 'licenses');
   for (const name of PORTLIB_NAMES) writeFile(portlibs, `${name}/LICENSE.txt`, `${name} licence\n`);
+  for (const name of WIIU_PORTLIB_NAMES) writeFile(work, `portlibs/wiiu/licenses/${name}/LICENSE.txt`, `${name} licence\n`);
   return {work, root, portlibs, validation, out: path.join(work, 'out')};
 }
 
@@ -220,12 +222,13 @@ function zipMap(zipBuffer) {
 function expectedNames() {
   const licences = LICENCE_NAMES.map(name => `${PREFIX}licenses/${name}`);
   const portlibs = PORTLIB_NAMES.map(name => `${PREFIX}licenses/${name}/LICENSE.txt`);
+  const wiiuPortlibs = WIIU_PORTLIB_NAMES.map(name => `${PREFIX}licenses/${name}/LICENSE.txt`);
   const source = SOURCE_FILES.filter(rel => rel !== 'launcher/men.rpx').map(rel => `${PREFIX}source/${rel}`);
   return [
     ...['men.rpx', 'men.rpx.sha256', 'SHA256SUMS', 'RELEASE-INFO.json', 'INSTALL.md', 'VALIDATION.md',
       'sd-layout/wiiu/environments/aroma/men.rpx'].map(name => PREFIX + name),
     ...TOP_NAMES.map(name => PREFIX + name),
-    ...licences, ...portlibs, ...source,
+    ...licences, ...portlibs, ...wiiuPortlibs, ...source,
   ].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
 }
 

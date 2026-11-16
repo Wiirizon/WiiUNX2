@@ -6,7 +6,7 @@
 - Investigate softer TV rendering compared with the GamePad (issue #38).
 - Restore menu sound effects in clean builds by bundling the original generated cues, with local effects retained as optional overrides.
 - Add a white circular outline around the profile icon while its row is focused, and make the selected-tile brightness pulse more visible.
-- Updater core (not wired into the menu): the install path is one exact archive entry, `sd-layout/wiiu/environments/aroma/men.rpx`, mapped to `wiiu/environments/aroma/men.rpx`. Other entries, including module files, are rejected instead of accepted by prefix.
+- Wire the in-app updater to download only standalone `men.rpx` and `men.rpx.sha256`, verify both GitHub asset digests and the named RPX checksum, and keep a verified rollback copy. Wii U hardware validation remains outstanding.
 
 ## 0.6.12-rc.3 — Release candidate
 

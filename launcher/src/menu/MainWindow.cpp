@@ -109,6 +109,9 @@ MainWindow::MainWindow(int32_t w, int32_t h, MenuMusic *sound)
     refreshAccounts();
 }
 MainWindow::~MainWindow() {
+    updateCancel=true;
+    if(updateCheck.valid()) updateCheck.wait();
+    if(updateInstall.valid()) updateInstall.wait();
     stopLoader=true;
     if(loader.joinable()) loader.join();
     if(iconRead.valid()) iconRead.wait();
@@ -151,6 +154,25 @@ void MainWindow::drawText(GuiText &text,CVideo *v,float x,float y) {
     text.setPosition(x-width/2.f,height/2.f-y); text.draw(v);
 }
 void MainWindow::process() {
+    if(updateCheck.valid()&&updateCheck.wait_for(std::chrono::seconds(0))==std::future_status::ready) {
+        try {
+            auto result=updateCheck.get();updateBusy=false;
+            if(result.success&&result.available) {
+                pendingUpdate=std::move(result.selection);pendingUpdateVersion=std::move(result.version);
+                showActionMessage("WiiUNX2 v"+pendingUpdateVersion+" is available.\nThe RPX and its checksum are verified over HTTPS. This project does not sign releases.\nInstall only to the standard Aroma environment with a verified backup.",
+                                  "Install",ModalAction::InstallUpdate);
+            } else showMessage(result.message);
+        } catch(const std::exception &) {
+            updateBusy=false;showMessage("The update check failed unexpectedly. The installed menu was not changed.");
+        }
+    }
+    if(updateInstall.valid()&&updateInstall.wait_for(std::chrono::seconds(0))==std::future_status::ready) {
+        try {
+            auto result=updateInstall.get();updateBusy=false;showMessage(result.message);
+        } catch(const std::exception &) {
+            updateBusy=false;showMessage("The updater failed unexpectedly. Check the Aroma SD folder and restore its verified backup if needed.");
+        }
+    }
     if(historyRead.valid() && historyRead.wait_for(std::chrono::seconds(0))==std::future_status::ready) {
         auto result=historyRead.get();
         if(historySlot==activeSlot) {nativeDays=std::move(result);viewDirty=true;}
@@ -351,9 +373,39 @@ void MainWindow::draw(CVideo *v) {
 }
 void MainWindow::showMessage(const std::string &text,bool power) {
     message.setText(text.c_str()); modal=true; powerConfirm=power;
+    modalAction=ModalAction::None;
     requestSound(MenuSound::Click);
     modalPrompts[0].caption->setText(power?"Cancel":"Back");
     modalPrompts[1].caption->setText(power?"Power off":"OK");
+}
+void MainWindow::showActionMessage(const std::string &text,const char *action,ModalAction next) {
+    message.setText(text.c_str());modal=true;powerConfirm=false;modalAction=next;
+    requestSound(MenuSound::Click);
+    modalPrompts[0].caption->setText("Back");modalPrompts[1].caption->setText(action);
+}
+void MainWindow::startUpdateCheck() {
+    if(updateBusy) return;
+    updateCancel=false;updateBusy=true;
+    showMessage("Checking the latest WiiUNX2 release over verified HTTPS...");
+    try {
+        updateCheck=std::async(std::launch::async,[this] {return nx::checkLatestUpdate(WIIUNX2_VERSION,&updateCancel);});
+    } catch(const std::exception &) {
+        updateBusy=false;showMessage("The update check could not be started. The installed menu was not changed.");
+    }
+}
+void MainWindow::startUpdateInstall() {
+    if(updateBusy||pendingUpdateVersion.empty()) return;
+    updateCancel=false;updateBusy=true;
+    showMessage("Downloading and verifying the update. The installed menu will not change until verification and backup complete.");
+    const auto selection=pendingUpdate;
+    const auto version=pendingUpdateVersion;
+    try {
+        updateInstall=std::async(std::launch::async,[this,selection,version] {
+            return nx::installUpdate(WIIUNX2_VERSION,version,selection,&updateCancel);
+        });
+    } catch(const std::exception &) {
+        updateBusy=false;showMessage("The updater could not be started. The installed menu was not changed.");
+    }
 }
 void MainWindow::move(int delta) {
     userNavigated=true;
@@ -378,9 +430,9 @@ void MainWindow::handleInput(GuiController *c) {
     if(launching || shutdownFrame) return;
     uint32_t pressed=c->data.buttons_d;
     if(modal) {
-        if(pressed&T::BUTTON_B) { modal=false;requestSound(MenuSound::Back);return; }
+        if(pressed&T::BUTTON_B) { modal=false;modalAction=ModalAction::None;requestSound(MenuSound::Back);return; }
         bool click=(c->chanIdx==0 && c->data.touched && !c->lastData.touched)||(c->chanIdx!=0 && c->data.validPointer && (pressed&T::BUTTON_A));
-        if(click) {int i=hitPrompt(modalPrompts,c->data.x+640,360-c->data.y,480);if(i==0){modal=false;requestSound(MenuSound::Back);}else if(i==1) confirmModal();}
+        if(click) {int i=hitPrompt(modalPrompts,c->data.x+640,360-c->data.y,480);if(i==0){modal=false;modalAction=ModalAction::None;requestSound(MenuSound::Back);}else if(i==1) confirmModal();}
         else if(pressed&T::BUTTON_A) confirmModal();
         return;
     }
@@ -767,10 +819,13 @@ void MainWindow::drawSearch(CVideo *v) {
 
 void MainWindow::showOptions() {
     requestSound(MenuSound::Click);
-        if(focusRow==0 && !visible.empty()) {
-            char id[32]; snprintf(id,sizeof(id),"%016llX",(unsigned long long)selectedTile().id);
-            showMessage(selectedTile().name+"\n\nTitle ID: "+id+"\n"+selectedTile().path);
-        } else showMessage("WiiUNX2 " WIIUNX2_VERSION " experimental\n\nD-pad / stick: select   A: open   B: back\nL / R: skip four titles\nTouch once to select, again to open");
+    if(focusRow==0 && !visible.empty()) {
+        char id[32];snprintf(id,sizeof(id),"%016llX",(unsigned long long)selectedTile().id);
+        showActionMessage(selectedTile().name+"\n\nTitle ID: "+id+"\n"+selectedTile().path+
+                          "\n\nCheck for a newer WiiUNX2 release?","Check updates",ModalAction::CheckUpdate);
+    } else {
+        showActionMessage("WiiUNX2 "+std::string(WIIUNX2_VERSION)+" experimental\n\nD-pad / stick: select   A: open   B: back\nL / R: skip four titles\nTouch once to select, again to open\n\nCheck for a newer release?","Check updates",ModalAction::CheckUpdate);
+    }
 }
 
 void MainWindow::drawFooter(CVideo *v) {drawPrompts(v,prompts,1224,674);}
@@ -790,8 +845,13 @@ int MainWindow::hitPrompt(const std::vector<FooterPrompt> &items,float x,float y
     return -1;
 }
 void MainWindow::confirmModal() {
-    requestSound(MenuSound::Click);modal=false;
-    if(powerConfirm) shutdownFrame=frame+12;
+    requestSound(MenuSound::Click);
+    const ModalAction action=modalAction;
+    const bool power=powerConfirm;
+    modal=false;powerConfirm=false;modalAction=ModalAction::None;
+    if(power) shutdownFrame=frame+12;
+    else if(action==ModalAction::CheckUpdate) startUpdateCheck();
+    else if(action==ModalAction::InstallUpdate) startUpdateInstall();
 }
 void MainWindow::footerAction(size_t action) {
     requestSound(MenuSound::Click);

@@ -48,6 +48,24 @@ software tile has a brightness pulse on its gradient outline. Mii avatars sit
 on a white circular backing, and the multicolor ring rotates while the profile
 or a dock item is selected.
 
+## In-app updates
+
+Open Options from the software row or dock, choose **Check updates**, then
+choose **Install** only after reviewing the version prompt. The updater
+downloads only the standalone `men.rpx` and `men.rpx.sha256` release assets
+over verified HTTPS. It verifies both GitHub asset digests, checks that the
+sidecar names `men.rpx` and matches its hash, and validates the Wii U RPX
+header before touching the installed file. It installs only when
+the active environment is confirmed as the standard Aroma environment at
+`SD:/wiiu/environments/aroma`; it does not change plugins, modules, settings,
+or caches. A verified timestamped `men.rpx.backup-*` is kept beside the
+installed menu, and the console must be restarted after a successful update.
+
+GitHub releases are not cryptographically signed. HTTPS and matching hashes
+provide transport integrity, not independent publisher authentication. The
+confirmation prompt states this limitation. Wii U TLS trust and SD replacement
+behavior have not been proven on hardware; keep a manual SD recovery path.
+
 ## Build and validate
 
 For host-only validation, install Node.js 18+ and a C++17 compiler, then run
@@ -61,7 +79,8 @@ node launcher/tools/Package-Public-Source.mjs
 ```
 
 For the Wii U binary, install devkitPro's Wii U toolchain and required
-portlibs, then run:
+portlibs, including `wiiu-curl` for HTTPS updates. In devkitPro MSYS2, run
+`pacman -S wiiu-curl`, then build with:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\launcher\Build.ps1

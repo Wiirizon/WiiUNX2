@@ -12,6 +12,10 @@ launcher/src/resources/filelist.h
 launcher/data/fonts/*.ttf
 !launcher/data/fonts/font.ttf
 launcher/data/sounds/ui*.bin
+!launcher/data/sounds/uiMoveDefault.bin
+!launcher/data/sounds/uiClickDefault.bin
+!launcher/data/sounds/uiBackDefault.bin
+launcher/SOUND-ASSETS.json
 **/wiiunx2-recent*.txt*
 **/wiiunx2.log
 **/mlc01*/

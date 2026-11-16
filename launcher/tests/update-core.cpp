@@ -10,8 +10,8 @@ int failures=0;
 
 #define CHECK(expr) do { if(!(expr)) { std::fprintf(stderr,"%s:%d: CHECK failed: %s\n",__FILE__,__LINE__,#expr); ++failures; } } while(0)
 
-const std::string kZipUrl="https://github.com/Wiirizon/WiiUNX2/releases/download/v0.6.12-rc.1/WiiUNX2-menu-v0.6.12-rc.1.zip";
-const std::string kShaUrl=kZipUrl+".sha256";
+const std::string kRpxUrl="https://github.com/Wiirizon/WiiUNX2/releases/download/v0.6.12-rc.1/men.rpx";
+const std::string kShaUrl="https://github.com/Wiirizon/WiiUNX2/releases/download/v0.6.12-rc.1/men.rpx.sha256";
 const std::string kAbcHex="ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
 
 std::string assetJson(const std::string &name,const std::string &url,const std::string &size,const std::string &state,const std::string &digest) {
@@ -22,10 +22,10 @@ std::string releaseJson(const std::string &tag,const std::string &draft,const st
     return "{\"tag_name\":\""+tag+"\",\"draft\":"+draft+",\"prerelease\":"+prerelease+",\"assets\":["+assets+"]}";
 }
 
-// Well-formed release with both assets for tag v0.6.12-rc.1.
+// Well-formed release with the standalone RPX and checksum for tag v0.6.12-rc.1.
 std::string goodAssets() {
-    return assetJson("WiiUNX2-menu-v0.6.12-rc.1.zip",kZipUrl,"1048576","uploaded","\"sha256:"+kAbcHex+"\"")+","+
-           assetJson("WiiUNX2-menu-v0.6.12-rc.1.zip.sha256",kShaUrl,"90","uploaded","null");
+    return assetJson("men.rpx",kRpxUrl,"1048576","uploaded","\"sha256:"+kAbcHex+"\"")+","+
+           assetJson("men.rpx.sha256",kShaUrl,"90","uploaded","null");
 }
 
 std::string goodRelease() {
@@ -108,8 +108,8 @@ void testReleaseHappyPath() {
     CHECK(release.tag=="v0.6.12-rc.1");
     CHECK(!release.draft&&release.prerelease);
     CHECK(release.assets.size()==2);
-    CHECK(release.assets[0].name=="WiiUNX2-menu-v0.6.12-rc.1.zip");
-    CHECK(release.assets[0].downloadUrl==kZipUrl);
+    CHECK(release.assets[0].name=="men.rpx");
+    CHECK(release.assets[0].downloadUrl==kRpxUrl);
     CHECK(release.assets[0].size==1048576);
     CHECK(release.assets[0].state=="uploaded");
     CHECK(release.assets[0].sha256==kAbcHex);
@@ -121,12 +121,9 @@ void testReleaseDigestHandling() {
     nx::Release release;
     CHECK(nx::parseLatestRelease(releaseJson("v1.0.0","false","false",assetJson("a","https://github.com/a","1","uploaded",upper)),release));
     CHECK(release.assets[0].sha256==std::string(64,'a'));
-    CHECK(nx::parseLatestRelease(releaseJson("v1.0.0","false","false",assetJson("a","https://github.com/a","1","uploaded","\"md5:abc\"")),release));
-    CHECK(release.assets[0].sha256.empty());
-    CHECK(nx::parseLatestRelease(releaseJson("v1.0.0","false","false",assetJson("a","https://github.com/a","1","uploaded","\"sha256:xyz\"")),release));
-    CHECK(release.assets[0].sha256.empty());
-    CHECK(nx::parseLatestRelease(releaseJson("v1.0.0","false","false",assetJson("a","https://github.com/a","1","uploaded","\"sha256:"+kAbcHex+"0\"")),release));
-    CHECK(release.assets[0].sha256.empty());
+    CHECK(!nx::parseLatestRelease(releaseJson("v1.0.0","false","false",assetJson("a","https://github.com/a","1","uploaded","\"md5:abc\"")),release));
+    CHECK(!nx::parseLatestRelease(releaseJson("v1.0.0","false","false",assetJson("a","https://github.com/a","1","uploaded","\"sha256:xyz\"")),release));
+    CHECK(!nx::parseLatestRelease(releaseJson("v1.0.0","false","false",assetJson("a","https://github.com/a","1","uploaded","\"sha256:"+kAbcHex+"0\"")),release));
     CHECK(!nx::parseLatestRelease(releaseJson("v1.0.0","false","false",assetJson("a","https://github.com/a","1","uploaded","5")),release));
     CHECK(!nx::parseLatestRelease(releaseJson("v1.0.0","false","false",assetJson("a","https://github.com/a","1","uploaded","[]")),release));
 }
@@ -216,21 +213,22 @@ void testReleaseDeepNestingDoesNotCrash() {
 
 void testReleaseEmbeddedNulInName() {
     const nx::Release release=parsedRelease(releaseJson("v1.0.0","false","false",
-        assetJson("WiiUNX2-menu-v1.0.0.zip\\u0000x","https://github.com/a","1","uploaded","null")));
+        assetJson("men.rpx\\u0000x","https://github.com/a","6","uploaded","null")));
     CHECK(release.assets.size()==1);
-    CHECK(release.assets[0].name.size()==25);
+    CHECK(release.assets[0].name.size()==9);
 }
 
 // ---- isAllowedDownloadUrl / isTrustedRedirect ---------------------------------------------------
 
 void testAllowedUrls() {
-    CHECK(nx::isAllowedDownloadUrl(kZipUrl));
+    CHECK(nx::isAllowedDownloadUrl(kRpxUrl));
     CHECK(nx::isAllowedDownloadUrl("https://api.github.com/repos/x/y/releases/latest"));
     CHECK(nx::isAllowedDownloadUrl("https://objects.githubusercontent.com/github-production/x"));
     CHECK(nx::isAllowedDownloadUrl("https://release-assets.githubusercontent.com/x"));
     CHECK(nx::isAllowedDownloadUrl("https://github.com:443/x"));
     CHECK(nx::isAllowedDownloadUrl("https://github.com/x@y"));
     CHECK(nx::isAllowedDownloadUrl("https://github.com/x?query=1#frag"));
+    CHECK(nx::isAllowedDownloadUrl("https://release-assets.githubusercontent.com/download?sig=a%2Fb%3D"));
     const std::string longPath="https://github.com/"+std::string(2048-19,'a');
     CHECK(longPath.size()==2048&&nx::isAllowedDownloadUrl(longPath));
 }
@@ -262,6 +260,8 @@ void testHostileUrls() {
         "https://github.com%2Fevil.com/x",
         "https://%67ithub.com/x",
         "https://github%2ecom/x",
+        "https://github.com/x?sig=%2",
+        "https://github.com/x?sig=%GG",
         "https://[::1]/x",
         "https://127.0.0.1/x",
         "https://github.com\\evil.com/x",
@@ -318,42 +318,42 @@ nx::Release releaseWithAssets(const std::string &tag,const std::string &assets) 
     return parsedRelease(releaseJson(tag,"false","false",assets));
 }
 
-std::string assetPair(const std::string &version,const std::string &zipSize,const std::string &shaSize,
-                      const std::string &zipUrl,const std::string &shaUrl) {
-    return assetJson("WiiUNX2-menu-v"+version+".zip",zipUrl,zipSize,"uploaded","null")+","+
-           assetJson("WiiUNX2-menu-v"+version+".zip.sha256",shaUrl,shaSize,"uploaded","null");
+std::string assetPair(const std::string &rpxSize,const std::string &shaSize,
+                      const std::string &rpxUrl,const std::string &shaUrl) {
+    return assetJson("men.rpx",rpxUrl,rpxSize,"uploaded","null")+","+
+           assetJson("men.rpx.sha256",shaUrl,shaSize,"uploaded","null");
 }
 
 void testSelectPrereleasePolicy() {
     nx::Release release=parsedRelease(releaseJson("v0.6.12-rc.1","false","true",goodAssets()));
-    nx::Selection selection;
+    nx::UpdateSelection selection;
     CHECK(nx::selectAssets(release,"0.6.11",selection)==nx::SelectResult::Invalid);
     CHECK(nx::selectAssets(release,"0.6.12-rc.0",selection)==nx::SelectResult::UpdateAvailable);
 }
 
 void testSelectUpdateAvailable() {
     nx::Release release=releaseWithAssets("v0.6.12-rc.1",goodAssets());
-    nx::Selection selection;
+    nx::UpdateSelection selection;
     CHECK(nx::selectAssets(release,"0.6.11",selection)==nx::SelectResult::UpdateAvailable);
-    CHECK(selection.zip.name=="WiiUNX2-menu-v0.6.12-rc.1.zip");
-    CHECK(selection.zip.downloadUrl==kZipUrl);
-    CHECK(selection.checksum.name=="WiiUNX2-menu-v0.6.12-rc.1.zip.sha256");
+    CHECK(selection.rpx.name=="men.rpx");
+    CHECK(selection.rpx.downloadUrl==kRpxUrl);
+    CHECK(selection.checksum.name=="men.rpx.sha256");
     CHECK(selection.checksum.downloadUrl==kShaUrl);
     CHECK(nx::selectAssets(release,"v0.6.12-rc.0",selection)==nx::SelectResult::UpdateAvailable);
 }
 
 void testSelectUpToDate() {
     nx::Release release=releaseWithAssets("v0.6.12-rc.1",goodAssets());
-    nx::Selection selection;
-    selection.zip.name="sentinel";
+    nx::UpdateSelection selection;
+    selection.rpx.name="sentinel";
     CHECK(nx::selectAssets(release,"0.6.12-rc.1",selection)==nx::SelectResult::UpToDate);
     CHECK(nx::selectAssets(release,"0.6.12",selection)==nx::SelectResult::UpToDate);
     CHECK(nx::selectAssets(release,"1.0.0",selection)==nx::SelectResult::UpToDate);
-    CHECK(selection.zip.name=="sentinel");
+    CHECK(selection.rpx.name=="sentinel");
 }
 
 void testSelectInvalidVersionsAndDrafts() {
-    nx::Selection selection;
+    nx::UpdateSelection selection;
     nx::Release release=releaseWithAssets("v0.6.12-rc.1",goodAssets());
     CHECK(nx::selectAssets(release,"0.6",selection)==nx::SelectResult::Invalid);
     CHECK(nx::selectAssets(release,"",selection)==nx::SelectResult::Invalid);
@@ -370,89 +370,88 @@ void testSelectInvalidVersionsAndDrafts() {
 }
 
 void testSelectNoAsset() {
-    nx::Selection selection;
-    const std::string zipOnly=assetJson("WiiUNX2-menu-v0.6.12.zip",kZipUrl,"10","uploaded","null");
+    nx::UpdateSelection selection;
+    const std::string zipOnly=assetJson("WiiUNX2-menu-v0.6.12.zip",kRpxUrl,"10","uploaded","null")+","+
+                              assetJson("WiiUNX2-menu-v0.6.12.zip.sha256",kShaUrl,"90","uploaded","null");
     CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",zipOnly),"0.6.11",selection)==nx::SelectResult::NoAsset);
-    const std::string shaOnly=assetJson("WiiUNX2-menu-v0.6.12.zip.sha256",kShaUrl,"10","uploaded","null");
+    const std::string rpxOnly=assetJson("men.rpx",kRpxUrl,"10","uploaded","null");
+    CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",rpxOnly),"0.6.11",selection)==nx::SelectResult::NoAsset);
+    const std::string shaOnly=assetJson("men.rpx.sha256",kShaUrl,"10","uploaded","null");
     CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",shaOnly),"0.6.11",selection)==nx::SelectResult::NoAsset);
     CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",""),"0.6.11",selection)==nx::SelectResult::NoAsset);
-    const std::string wrongVersion=assetPair("0.6.11","10","10",kZipUrl,kShaUrl);
-    CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",wrongVersion),"0.6.10",selection)==nx::SelectResult::NoAsset);
-    const std::string spaced=assetJson("WiiUNX2-menu-v0.6.12.zip ",kZipUrl,"10","uploaded","null")+","+
-                             assetJson("WiiUNX2-menu-v0.6.12.zip.sha256 ",kShaUrl,"10","uploaded","null");
+    const std::string spaced=assetJson("men.rpx ",kRpxUrl,"10","uploaded","null")+","+
+                             assetJson("men.rpx.sha256 ",kShaUrl,"10","uploaded","null");
     CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",spaced),"0.6.11",selection)==nx::SelectResult::NoAsset);
-    const std::string caseChanged=assetPair("0.6.12","10","10",kZipUrl,kShaUrl);
-    const std::string lower=assetJson("wiiunx2-menu-v0.6.12.zip",kZipUrl,"10","uploaded","null")+","+
-                            assetJson("wiiunx2-menu-v0.6.12.zip.sha256",kShaUrl,"10","uploaded","null");
-    CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",lower),"0.6.11",selection)==nx::SelectResult::NoAsset);
-    CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",caseChanged),"0.6.11",selection)==nx::SelectResult::UpdateAvailable);
-    const std::string traversal=assetJson("../WiiUNX2-menu-v0.6.12.zip",kZipUrl,"10","uploaded","null")+","+
-                                assetJson("../WiiUNX2-menu-v0.6.12.zip.sha256",kShaUrl,"10","uploaded","null");
+    const std::string caseChanged=assetJson("MEN.RPX",kRpxUrl,"10","uploaded","null")+","+
+                                  assetJson("MEN.RPX.SHA256",kShaUrl,"10","uploaded","null");
+    CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",caseChanged),"0.6.11",selection)==nx::SelectResult::NoAsset);
+    const std::string traversal=assetJson("../men.rpx",kRpxUrl,"10","uploaded","null")+","+
+                                assetJson("../men.rpx.sha256",kShaUrl,"10","uploaded","null");
     CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",traversal),"0.6.11",selection)==nx::SelectResult::NoAsset);
 }
 
 void testSelectDuplicateNamesAreInvalid() {
-    nx::Selection selection;
-    const std::string dup=assetPair("0.6.12","10","10",kZipUrl,kShaUrl)+","+
-                          assetJson("WiiUNX2-menu-v0.6.12.zip",kZipUrl,"10","uploaded","null");
+    nx::UpdateSelection selection;
+    const std::string dup=assetPair("10","10",kRpxUrl,kShaUrl)+","+
+                          assetJson("men.rpx",kRpxUrl,"10","uploaded","null");
     CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",dup),"0.6.11",selection)==nx::SelectResult::Invalid);
 }
 
 void testSelectSizeLimits() {
-    nx::Selection selection;
-    const uint64_t cap=64ull*1024*1024;
-    const std::string sizes[][2]={{"0","10"},{"1","4096"},{std::to_string(cap),"10"},{"18446744073709551615","10"},
-                                  {"10","4096"}};
-    const nx::SelectResult expected[]={nx::SelectResult::Invalid,nx::SelectResult::UpdateAvailable,nx::SelectResult::UpdateAvailable,
-                                       nx::SelectResult::Invalid,nx::SelectResult::UpdateAvailable};
+    nx::UpdateSelection selection;
+    const uint64_t cap=nx::kMaxRpxBytes;
+    const std::string sizes[][2]={{"0","10"},{"5","10"},{"6","4096"},{std::to_string(cap),"10"},
+                                  {"18446744073709551615","10"},{"10","0"},{"10","4097"}};
+    const nx::SelectResult expected[]={nx::SelectResult::Invalid,nx::SelectResult::Invalid,nx::SelectResult::UpdateAvailable,
+                                       nx::SelectResult::UpdateAvailable,nx::SelectResult::Invalid,nx::SelectResult::Invalid,
+                                       nx::SelectResult::Invalid};
     for(size_t i=0;i<sizeof(expected)/sizeof(expected[0]);++i) {
-        nx::Selection out;
-        const nx::Release release=releaseWithAssets("v0.6.12",assetPair("0.6.12",sizes[i][0],sizes[i][1],kZipUrl,kShaUrl));
+        nx::UpdateSelection out;
+        const nx::Release release=releaseWithAssets("v0.6.12",assetPair(sizes[i][0],sizes[i][1],kRpxUrl,kShaUrl));
         CHECK(nx::selectAssets(release,"0.6.11",out)==expected[i]);
     }
-    CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",assetPair("0.6.12",std::to_string(cap+1),"10",kZipUrl,kShaUrl)),"0.6.11",selection)==nx::SelectResult::Invalid);
-    CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",assetPair("0.6.12","10","4097",kZipUrl,kShaUrl)),"0.6.11",selection)==nx::SelectResult::Invalid);
+    CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",assetPair(std::to_string(cap+1),"10",kRpxUrl,kShaUrl)),"0.6.11",selection)==nx::SelectResult::Invalid);
 }
 
 void testSelectRejectsHostileUrls() {
-    nx::Selection selection;
-    const std::string evil="https://github.com.evil.com/WiiUNX2-menu-v0.6.12.zip";
-    CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",assetPair("0.6.12","10","10",evil,kShaUrl)),"0.6.11",selection)==nx::SelectResult::Invalid);
-    CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",assetPair("0.6.12","10","10",kZipUrl,"http://github.com/x")),"0.6.11",selection)==nx::SelectResult::Invalid);
-    CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",assetPair("0.6.12","10","10",kZipUrl,"")),"0.6.11",selection)==nx::SelectResult::Invalid);
+    nx::UpdateSelection selection;
+    const std::string evil="https://github.com.evil.com/men.rpx";
+    CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",assetPair("10","10",evil,kShaUrl)),"0.6.11",selection)==nx::SelectResult::Invalid);
+    CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",assetPair("10","10",kRpxUrl,"http://github.com/x")),"0.6.11",selection)==nx::SelectResult::Invalid);
+    CHECK(nx::selectAssets(releaseWithAssets("v0.6.12",assetPair("10","10",kRpxUrl,"")),"0.6.11",selection)==nx::SelectResult::Invalid);
 }
 
 void testSelectTagWithoutVPrefix() {
-    nx::Selection selection;
-    const std::string assets=assetPair("0.6.12","10","10",kZipUrl,kShaUrl);
+    nx::UpdateSelection selection;
+    const std::string assets=assetPair("10","10",kRpxUrl,kShaUrl);
     CHECK(nx::selectAssets(releaseWithAssets("0.6.12",assets),"0.6.11",selection)==nx::SelectResult::UpdateAvailable);
-    CHECK(selection.zip.name=="WiiUNX2-menu-v0.6.12.zip");
+    CHECK(selection.rpx.name=="men.rpx");
 }
 
 // ---- parseSha256File ---------------------------------------------------------------------------
 
 void testSha256FileAccepts() {
     std::string hex;
-    CHECK(nx::parseSha256File(kAbcHex+"  WiiUNX2-menu-v0.6.12.zip\n",hex)&&hex==kAbcHex);
-    CHECK(nx::parseSha256File(kAbcHex,hex)&&hex==kAbcHex);
-    CHECK(nx::parseSha256File("  \t"+kAbcHex+"\r\n",hex)&&hex==kAbcHex);
+    CHECK(nx::parseSha256File(kAbcHex+"  men.rpx\n","men.rpx",hex)&&hex==kAbcHex);
+    CHECK(nx::parseSha256File("  \t"+kAbcHex+" \t men.rpx\r\n","men.rpx",hex)&&hex==kAbcHex);
     std::string upper=kAbcHex;
     for(char &c:upper) c=static_cast<char>(c>='a'&&c<='f'?c-'a'+'A':c);
-    CHECK(nx::parseSha256File(upper+" file",hex)&&hex==kAbcHex);
-    CHECK(nx::parseSha256File(kAbcHex+"\n\n garbage here",hex)&&hex==kAbcHex);
+    CHECK(nx::parseSha256File(upper+"  men.rpx","men.rpx",hex)&&hex==kAbcHex);
 }
 
 void testSha256FileRejects() {
     std::string hex="unchanged";
-    CHECK(!nx::parseSha256File("",hex));
-    CHECK(!nx::parseSha256File("   \r\n",hex));
-    CHECK(!nx::parseSha256File(kAbcHex.substr(0,63),hex));
-    CHECK(!nx::parseSha256File(kAbcHex+"0",hex));
-    CHECK(!nx::parseSha256File(kAbcHex+"zz",hex));
-    CHECK(!nx::parseSha256File(std::string(63,'a')+"g",hex));
-    CHECK(!nx::parseSha256File(std::string(64,'a').replace(10,1,"\x00",1),hex));
-    CHECK(!nx::parseSha256File("ba78 16bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",hex));
-    CHECK(!nx::parseSha256File("sha256:"+kAbcHex,hex));
+    CHECK(!nx::parseSha256File("","men.rpx",hex));
+    CHECK(!nx::parseSha256File("   \r\n","men.rpx",hex));
+    CHECK(!nx::parseSha256File(kAbcHex.substr(0,63)+"  men.rpx","men.rpx",hex));
+    CHECK(!nx::parseSha256File(kAbcHex+"0  men.rpx","men.rpx",hex));
+    CHECK(!nx::parseSha256File(kAbcHex+"zz  men.rpx","men.rpx",hex));
+    CHECK(!nx::parseSha256File(std::string(63,'a')+"g  men.rpx","men.rpx",hex));
+    CHECK(!nx::parseSha256File(kAbcHex+"  wrong.rpx","men.rpx",hex));
+    CHECK(!nx::parseSha256File(kAbcHex+"  men.rpx extra","men.rpx",hex));
+    CHECK(!nx::parseSha256File(kAbcHex+"  men.rpx","",hex));
+    CHECK(!nx::parseSha256File(std::string(64,'a').replace(10,1,"\x00",1)+"  men.rpx","men.rpx",hex));
+    CHECK(!nx::parseSha256File("sha256:"+kAbcHex+"  men.rpx","men.rpx",hex));
     CHECK(hex=="unchanged");
 }
 
@@ -515,6 +514,23 @@ void testVerifyDownload() {
     CHECK(!nx::verifyDownload("",0,"",0));
 }
 
+void testWiiURpxHeader() {
+    const uint8_t valid[]={0x7f,'E','L','F',1,2};
+    CHECK(nx::isWiiURpxHeader(valid,sizeof(valid)));
+    CHECK(!nx::isWiiURpxHeader(valid,5));
+    CHECK(!nx::isWiiURpxHeader(nullptr,sizeof(valid)));
+    uint8_t invalid[sizeof(valid)];
+    std::copy(valid,valid+sizeof(valid),invalid);
+    invalid[0]=0;
+    CHECK(!nx::isWiiURpxHeader(invalid,sizeof(invalid)));
+    std::copy(valid,valid+sizeof(valid),invalid);
+    invalid[4]=2;
+    CHECK(!nx::isWiiURpxHeader(invalid,sizeof(invalid)));
+    std::copy(valid,valid+sizeof(valid),invalid);
+    invalid[5]=1;
+    CHECK(!nx::isWiiURpxHeader(invalid,sizeof(invalid)));
+}
+
 // ---- rateLimitWaitSeconds ----------------------------------------------------------------------
 
 using Headers=std::map<std::string,std::string>;
@@ -572,41 +588,7 @@ void testRateLimitReset() {
     CHECK(nx::rateLimitWaitSeconds(429,both,kNow)==7);
 }
 
-// ---- installPathFor / backupName -------------------------------------------------------------
-
-void testInstallPathMapsOnlyTheReleaseEntry() {
-    // Must match the entry written by launcher/tools/Package-Release.mjs.
-    CHECK(nx::installPathFor("sd-layout/wiiu/environments/aroma/men.rpx")=="wiiu/environments/aroma/men.rpx");
-}
-
-void testInstallPathRejectsEverythingElse() {
-    const char *bad[]={
-        "","men.rpx","men.rpx.sha256","sd-layout/men.rpx","sd-layout/wiiu/environments/aroma/",
-        "wiiu/environments/aroma/men.rpx","wiiu/environments/aroma/",
-        "sd-layout/wiiu/environments/aroma/modules/setup/00_mocha.rpx",
-        "wiiu/environments/aroma/modules/setup/00_mocha.rpx",
-        "sd-layout/wiiu/environments/aroma/a-b_c.txt","sd-layout/wiiu/environments/other/men.rpx",
-        "sd-layout/wiiu/environments/aroma/men.rpx.bak","sd-layout/wiiu/environments/aroma/men.rpx/",
-        "sd-layout/wiiu/environments/aroma/men.rpx/..","sd-layout/wiiu/environments/aroma/./men.rpx",
-        "sd-layout/wiiu/environments/aroma//men.rpx","sd-layout/wiiu/environments/aroma/../men.rpx",
-        "sd-layout/../sd-layout/wiiu/environments/aroma/men.rpx","../sd-layout/wiiu/environments/aroma/men.rpx",
-        "/sd-layout/wiiu/environments/aroma/men.rpx","C:/sd-layout/wiiu/environments/aroma/men.rpx",
-        "sd-layout\\wiiu\\environments\\aroma\\men.rpx","sd-layout/wiiu\\environments/aroma/men.rpx",
-        "SD-LAYOUT/wiiu/environments/aroma/men.rpx","sd-layout/wiiu/environments/aroma/MEN.RPX",
-        "sd-layout/wiiu/environments/aroma/men.rpx:stream","C:men.rpx",
-        "sd-layout/wiiu/environments/aroma/men.rpx\t","sd-layout/wiiu/environments/aroma/men.rpx\n",
-        "sd-layout/wiiu/environments/aroma/men.rpx ","x/sd-layout/wiiu/environments/aroma/men.rpx",
-        "sd-layout/wiiu/environments/aroma/\xc3\xa9.rpx","..",".","wiiu/..",
-    };
-    for(const char *name:bad) {
-        const std::string destination=nx::installPathFor(name);
-        if(!destination.empty()) std::fprintf(stderr,"mapped but should reject: [%s] -> [%s]\n",name,destination.c_str());
-        CHECK(destination.empty());
-    }
-    const std::string longName="sd-layout/wiiu/environments/aroma/men.rpx"+std::string(201,'a');
-    CHECK(nx::installPathFor(longName).empty());
-    CHECK(nx::installPathFor(std::string("sd-layout/wiiu/environments/aroma/men.rpx\0x",43)).empty());
-}
+// ---- backupName ------------------------------------------------------------------------------
 
 void testBackupName() {
     CHECK(nx::backupName("men.rpx","20261107-ab12")=="men.rpx.backup-20261107-ab12");
@@ -657,11 +639,10 @@ int main() {
     testSha256NistVectors();
     testSha256ChunkedEquivalence();
     testVerifyDownload();
+    testWiiURpxHeader();
     testRateLimitNonLimitStatuses();
     testRateLimitDefaultsAndRetryAfter();
     testRateLimitReset();
-    testInstallPathMapsOnlyTheReleaseEntry();
-    testInstallPathRejectsEverythingElse();
     testBackupName();
     if(failures) {
         std::fprintf(stderr,"%d check(s) failed\n",failures);

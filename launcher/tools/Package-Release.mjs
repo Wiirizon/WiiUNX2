@@ -557,14 +557,17 @@ Update-SD.ps1 defaults to the normal aroma environment. It first copies an
 existing men.rpx to men.rpx.backup-<date>-<id>, then replaces the file and
 checks the new hash. Plugins and modules are not changed.
 
-## 4. Install the optional experimental StyleMiiU plugin
+## 4. Install using StyleMiiU
 
-[Download stylemiiu.wps directly from the latest StyleMiiU RPX release](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX/releases/latest/download/stylemiiu.wps).
-Follow the [fork's instructions](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX):
-install the WPS in the chosen environment's plugins folder, put this package's
-men.rpx at SD:/wiiu/themes/WiiUNX2/men.rpx, and select it in the WUPS menu
-with Mashup themes turned off. This route requires Aroma's RPXLoadingModule
-and remains experimental.
+1. Download this package's men.rpx and [the latest stylemiiu.wps](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX/releases/latest/download/stylemiiu.wps).
+2. Install stylemiiu.wps in \`SD:/wiiu/environments/<environment>/plugins/\`;
+   follow the [plugin instructions](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX#readme).
+3. Put men.rpx at \`SD:/wiiu/themes/WiiUNX2/men.rpx\`.
+4. In the WUPS menu, open StyleMiiU RPX > Available Themes, select WiiUNX2,
+   and turn Mashup themes off.
+
+This method requires Aroma's RPXLoadingModule. The linked plugin is a
+community RPX-compatible fork of [ThemeCafe's StyleMiiU-Plugin](https://github.com/ThemeCafe/StyleMiiU-Plugin).
 
 ## 5. Remove WiiUNX2 or roll back
 

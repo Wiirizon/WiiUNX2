@@ -111,6 +111,9 @@ jobs:
         body: |
           ## WiiUNX2 ${{ steps.version.outputs.version }}
 
+          ### Changelog
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/CHANGELOG.md) for this version's changes and validation notes.
+
           ### Install in the normal Aroma environment
           1. Download `men.rpx` and `men.rpx.sha256`.
           2. Power off the Wii U. Back up any existing `SD:/wiiu/environments/aroma/men.rpx`.

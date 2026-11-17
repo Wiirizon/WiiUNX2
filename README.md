@@ -5,7 +5,7 @@ horizontal software row, touch navigation, search, sorting, user selection,
 disc discovery and homebrew launching. It is not affiliated with, endorsed by
 or sponsored by Nintendo.
 
-The v0.6.12 release candidate does not bundle Nintendo firmware, game files,
+The v0.7.2 release does not bundle Nintendo firmware, game files,
 console system files, or recorded Nintendo audio. Its optional UI cues are
 original synthetic sounds generated without reference recordings. Game icons
 are read from software installed on the user's console and are not distributed.
@@ -113,15 +113,19 @@ installation; if there was no previous `men.rpx`, delete the one you added.
 
 GitHub releases provide `men.rpx` and `men.rpx.sha256` as direct downloads.
 
-For the experimental StyleMiiU RPX route, [download `stylemiiu.wps` directly
-from the fork's latest release](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX/releases/latest/download/stylemiiu.wps).
-Install it in `SD:/wiiu/environments/<environment>/plugins/`, put WiiUNX2 at
-`SD:/wiiu/themes/WiiUNX2/men.rpx`, then select it under **WUPS Menu >
-StyleMiiU RPX > Available Themes** with **Mashup themes** turned off. This
-method requires Aroma's RPXLoadingModule and remains experimental; follow the
-[fork's instructions](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX),
-avoid competing menu-patching plugins during testing, and keep a recovery
-path. Choose either this route or the direct Aroma `men.rpx` install.
+### Install using StyleMiiU
+
+1. Download [`stylemiiu.wps` from the latest release](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX/releases/latest/download/stylemiiu.wps).
+2. Install it in `SD:/wiiu/environments/<environment>/plugins/`, following
+   the [plugin instructions](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX#readme).
+3. Put WiiUNX2's `men.rpx` at `SD:/wiiu/themes/WiiUNX2/men.rpx`.
+4. In **WUPS Menu > StyleMiiU RPX > Available Themes**, select WiiUNX2 with
+   **Mashup themes** turned off.
+
+This method requires Aroma's RPXLoadingModule. The linked plugin is a
+community RPX-compatible fork of [ThemeCafe's StyleMiiU-Plugin](https://github.com/ThemeCafe/StyleMiiU-Plugin).
+Avoid competing menu-patching plugins during testing and keep a recovery path.
+Choose either this route or the direct Aroma `men.rpx` install.
 
 `Update-SD.ps1` also updates the normal `aroma` environment and backs up an
 existing `men.rpx` before replacing it. Never replace internal system files.

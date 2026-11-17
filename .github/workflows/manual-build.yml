@@ -61,11 +61,16 @@ jobs:
         2. Verify men.rpx with men.rpx.sha256, then copy it to SD:/wiiu/environments/aroma/men.rpx.
         3. To remove WiiUNX2, restore the backup or delete the file if none existed.
 
-        Experimental StyleMiiU RPX plugin (WiiUNX2 fork):
+        StyleMiiU instructions (RPX-compatible fork of ThemeCafe's plugin):
         https://github.com/Wiirizon/StyleMiiU-Plugin-RPX
+        Original plugin:
+        https://github.com/ThemeCafe/StyleMiiU-Plugin
         Download the latest stylemiiu.wps:
         https://github.com/Wiirizon/StyleMiiU-Plugin-RPX/releases/latest/download/stylemiiu.wps
-        Put WiiUNX2 at SD:/wiiu/themes/WiiUNX2/men.rpx and follow the plugin README:
+        Install stylemiiu.wps in SD:/wiiu/environments/<environment>/plugins/.
+        Put men.rpx at SD:/wiiu/themes/WiiUNX2/men.rpx, then select WiiUNX2
+        under WUPS Menu > StyleMiiU RPX > Available Themes with Mashup themes off.
+        This method requires Aroma's RPXLoadingModule. Follow the plugin README:
         https://github.com/Wiirizon/StyleMiiU-Plugin-RPX#readme
         
         Build log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -93,6 +98,6 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Installation" >> $GITHUB_STEP_SUMMARY
         echo "Copy men.rpx into SD:/wiiu/environments/aroma/ after backing up any existing file." >> $GITHUB_STEP_SUMMARY
-        echo "The optional experimental StyleMiiU plugin route is released separately." >> $GITHUB_STEP_SUMMARY
+        echo "StyleMiiU installation instructions and the plugin link are included in BUILD_INFO.txt; Aroma's RPXLoadingModule is required." >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "Download the artifact from the Actions tab above for the package zip and standalone men.rpx/checksum assets. 📦" >> $GITHUB_STEP_SUMMARY

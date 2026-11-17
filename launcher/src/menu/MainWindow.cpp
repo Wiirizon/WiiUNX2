@@ -339,7 +339,7 @@ void MainWindow::draw(CVideo *v) {
         drawImage(*tileShadow,v,x,330);
         if(i==selected && focusRow==0 && !visible.empty()) {
             const float phase=float(frame%480)*(6.28318530718f/480.f);
-            const float offset=0.03f;
+            const float offset=0.10f;
             tileFocus->setColorIntensity(glm::vec4(
                 0.97f+offset*std::sin(phase),
                 0.97f+offset*std::sin(phase+2.0943951f),

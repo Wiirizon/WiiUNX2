@@ -1,10 +1,20 @@
 # WiiUNX2 changelog
 
-The oldest recoverable release is v0.3. No v0.1 or v0.2 release is present in
-the available tags or project history. Tags v0.3 through v0.6.10 are reviewed,
-reconstructed source snapshots rather than the original commit-by-commit
-history; the entries below consolidate the release details that could be
-recovered, but may not list every interim change.
+## Before the tagged releases — theme-building phase
+
+- Early project records show a Wii U theme builder modifying `Men.pack` and
+  `Men2.pack` from US 5.5.5. The builder was updated to accept their FLYT 2.2.0
+  layouts and produced a pale-gray, white and cyan theme based on the supplied
+  Switch 2 UI reference. That theme retained the Wii U's native grid.
+- The project later evolved into the standalone `men.rpx` menu replacement.
+  No surviving records establish whether the theme work was released as v0.1
+  or v0.2, or what those numbered versions contained. v0.3 is the oldest
+  recoverable tagged source release, not necessarily the start of development.
+
+Tags v0.3 through v0.6.10 are reviewed, reconstructed source snapshots rather
+than the original commit-by-commit history; the entries below consolidate the
+release details that could be recovered, but may not list every interim
+change.
 
 ## 0.7.1 — Stable release
 
@@ -27,7 +37,7 @@ recovered, but may not list every interim change.
   Hardware validation of RPXLoadingModule path reporting and SD replacement
   is still required.
 
-## 0.7.0 — Stable release
+## 0.7 — Stable release
 
 - Add a manual in-app updater for standalone `men.rpx` releases, with
   HTTPS/digest/checksum verification, a verified backup and rollback handling.

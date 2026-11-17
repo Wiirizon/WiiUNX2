@@ -55,11 +55,16 @@ choose **Install** only after reviewing the version prompt. The updater
 downloads only the standalone `men.rpx` and `men.rpx.sha256` release assets
 over verified HTTPS. It verifies both GitHub asset digests, checks that the
 sidecar names `men.rpx` and matches its hash, and validates the Wii U RPX
-header before touching the installed file. It installs only when
-the active environment is confirmed as the standard Aroma environment at
-`SD:/wiiu/environments/aroma`; it does not change plugins, modules, settings,
-or caches. A verified timestamped `men.rpx.backup-*` is kept beside the
-installed menu, and the console must be restarted after a successful update.
+header before touching the installed file. It confirms the active environment
+is standard Aroma, then asks RPXLoadingModule for the running executable path.
+For the StyleMiiU route it updates the exact `SD:/wiiu/themes/.../men.rpx`
+currently running; for a direct install it updates
+`SD:/wiiu/environments/aroma/men.rpx`. A verified timestamped
+`men.rpx.backup-*` is kept beside the selected RPX, and the console must be
+restarted after a successful update. If RPXLoadingModule cannot report the
+running theme path (API v2+), the updater fails safely and asks for a manual
+update rather than guessing. It does not update the StyleMiiU `.wps` plugin or
+change other plugins, modules, settings, or caches.
 
 GitHub releases are not cryptographically signed. HTTPS and matching hashes
 provide transport integrity, not independent publisher authentication. The

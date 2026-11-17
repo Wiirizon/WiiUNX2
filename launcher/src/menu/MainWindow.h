@@ -95,7 +95,7 @@ private:
     std::atomic<bool> updateCancel{false};
     bool updateBusy=false;
     nx::UpdateSelection pendingUpdate;
-    std::string pendingUpdateVersion;
+    std::string pendingUpdateVersion,pendingUpdateTargetPath;
     std::thread loader;
     std::atomic<bool> stopLoader{false}, loaderDone{false}, loaderFailed{false}, discUnsupportedNotice{false};
     std::mutex pendingMutex;

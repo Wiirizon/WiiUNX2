@@ -1,5 +1,24 @@
 # WiiUNX2 changelog
 
+## 0.7.2 — Stable release
+
+- Make the selected app's cyan-blue focus border cycle more visibly, matching
+  the dock/profile ring's 480-frame animation cadence.
+- Skip TV-only FXAA post-processing to test whether it causes reported
+  softening of small glyphs and punctuation; TV output needs a new console
+  comparison.
+- Prepare an updater-test release so stable v0.7.1 installations can discover
+  v0.7.2 through GitHub's latest-stable-release endpoint.
+- Present StyleMiiU installation as a numbered setup path and identify its
+  RPX-compatible plugin as a fork of ThemeCafe's StyleMiiU plugin.
+
+### Validation and known limitations
+
+- Validation is pending the tagged GitHub Actions Wii U build and host/source
+  checks.
+- TV sharpness, tile animation, and online update installation still need
+  console testing.
+
 ## Before the tagged releases — theme-building phase
 
 - Early project records show a Wii U theme builder modifying `Men.pack` and
@@ -25,9 +44,10 @@ change.
   replacing the file, and keep the verified backup beside that RPX. If the
   active path cannot be safely identified, automatic installation fails
   closed. The updater does not update the StyleMiiU `.wps` plugin.
-- Add the experimental [StyleMiiU RPX plugin](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX)
-  and [latest `stylemiiu.wps` download](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX/releases/latest/download/stylemiiu.wps)
-  to generated build information.
+- Add StyleMiiU setup instructions for the community
+  [RPX-compatible fork](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX) of
+  [ThemeCafe's original plugin](https://github.com/ThemeCafe/StyleMiiU-Plugin),
+  with a direct [latest `stylemiiu.wps` download](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX/releases/latest/download/stylemiiu.wps).
 
 ### Validation and known limitations
 

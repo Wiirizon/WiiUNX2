@@ -83,7 +83,7 @@ public:
     }
 
     void tvDrawDone(void) {
-        renderFXAA(&tvAaTexture, &aaSampler);
+        // Keep TV UI glyphs unfiltered; FXAA may soften small punctuation.
         GX2CopyColorBufferToScanBuffer(&tvColorBuffer, GX2_SCAN_TARGET_TV);
         GX2SwapScanBuffers();
         GX2Flush();

@@ -22,8 +22,13 @@ jobs:
     - name: Fix git ownership
       run: git config --global --add safe.directory /__w/WiiUNX2/WiiUNX2
     
-    - name: Install Wii U HTTPS library
-      run: dkp-pacman -Sy --noconfirm --needed wiiu-curl
+    - name: Check Wii U HTTPS library
+      run: |
+        if dkp-pacman -Q wiiu-curl >/dev/null 2>&1; then
+          echo "wiiu-curl is already installed in the devkitPro image."
+        else
+          dkp-pacman -Sy --noconfirm --needed wiiu-curl
+        fi
 
     - name: Build all dependencies and launcher
       run: |

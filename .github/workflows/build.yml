@@ -83,7 +83,12 @@ jobs:
         2. Copy men.rpx to SD:/wiiu/environments/aroma/men.rpx.
         3. To remove WiiUNX2, restore the backup or delete the file if none existed.
 
-        The optional experimental StyleMiiU plugin route is documented in the README and released separately.
+        Experimental StyleMiiU RPX plugin (WiiUNX2 fork):
+        https://github.com/Wiirizon/StyleMiiU-Plugin-RPX
+        Download the latest stylemiiu.wps:
+        https://github.com/Wiirizon/StyleMiiU-Plugin-RPX/releases/latest/download/stylemiiu.wps
+        Put WiiUNX2 at SD:/wiiu/themes/WiiUNX2/men.rpx and follow the plugin README:
+        https://github.com/Wiirizon/StyleMiiU-Plugin-RPX#readme
         
         Build logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         EOF
@@ -113,7 +118,7 @@ jobs:
           4. To remove WiiUNX2, restore the backup; if no file existed before installation, delete the `men.rpx` you added.
 
           ### Optional experimental StyleMiiU RPX route
-          See the README for this separate plugin-based option. It requires Aroma's RPXLoadingModule and remains experimental.
+          [StyleMiiU RPX plugin (WiiUNX2 fork)](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX); [download latest stylemiiu.wps](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX/releases/latest/download/stylemiiu.wps). Put WiiUNX2 at `SD:/wiiu/themes/WiiUNX2/men.rpx` and follow the plugin README. This separate option requires Aroma's RPXLoadingModule and remains experimental.
           
           ### Build Information:
           - Commit: `${{ github.sha }}`

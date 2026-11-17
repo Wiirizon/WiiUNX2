@@ -21,12 +21,11 @@ recovered, but may not list every interim change.
 
 ### Validation and known limitations
 
-- Focused updater policy, replacement and target-resolution tests passed;
-  Wii U-targeted syntax checks and the public-source check passed.
-- The full host runner was blocked by Windows Application Control, and the
-  local full build was blocked by a devkitPro `CThread.h` callback-signature
-  mismatch. Hardware validation of RPXLoadingModule path reporting and SD
-  replacement is still required.
+- GitHub Actions Wii U cross-build and Linux host/source validation passed,
+  including the full host suite, history audit and source archive check.
+- Windows Application Control blocked the full host runner on this PC.
+  Hardware validation of RPXLoadingModule path reporting and SD replacement
+  is still required.
 
 ## 0.7.0 — Stable release
 

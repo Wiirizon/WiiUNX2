@@ -14,8 +14,10 @@
 
 ### Validation and known limitations
 
-- Validation is pending the tagged GitHub Actions Wii U build and host/source
-  checks.
+- The release-source GitHub Actions Wii U build and Linux host/source
+  validation passed: [build](https://github.com/Wiirizon/WiiUNX2/actions/runs/44154022191),
+  [source validation](https://github.com/Wiirizon/WiiUNX2/actions/runs/44154045968).
+- The tag-triggered build must also pass before it publishes release assets.
 - TV sharpness, tile animation, and online update installation still need
   console testing.
 

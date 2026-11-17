@@ -27,7 +27,7 @@ for(const name of ['navigation','library','stability','rounded','edgebleed','loa
     args=[fixture.replaceAll('\\','/')];
   }
   if(name==='launch-log') {
-    const fixture=path.join(output,'launch-log');fs.mkdirSync(fixture,{recursive:true});
+    const fixture=path.join(output,'launch-log-fixture');fs.mkdirSync(fixture,{recursive:true});
     args=[fixture.replaceAll('\\','/')];
   }
   run(executable,args);console.log(`PASS ${name}`);

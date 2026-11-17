@@ -1,12 +1,17 @@
 # WiiUNX2 changelog
 
-## Unreleased
+## 0.7.0 — Stable release
 
 - Draw Mii avatars over a solid white disk and rotate the selected profile/dock gradient ring; document the Aroma environment and experimental plugin install options.
-- Investigate softer TV rendering compared with the GamePad (issue #38).
 - Restore menu sound effects in clean builds by bundling the original generated cues, with local effects retained as optional overrides.
 - Add a white circular outline around the profile icon while its row is focused, and make the selected-tile brightness pulse more visible.
 - Wire the in-app updater to download only standalone `men.rpx` and `men.rpx.sha256`, verify both GitHub asset digests and the named RPX checksum, and keep a verified rollback copy. Wii U hardware validation remains outstanding.
+- Track the softer TV rendering compared with the GamePad in issue #38.
+
+### Validation and known limitations
+
+- Wii U cross-build passed in GitHub Actions.
+- The new updater and visual/audio changes still need validation on Wii U hardware.
 
 ## 0.6.12-rc.3 — Release candidate
 

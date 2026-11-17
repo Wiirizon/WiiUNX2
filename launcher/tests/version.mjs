@@ -13,7 +13,7 @@ test('common.h defines WIIUNX2_VERSION as x.y.z',()=>{
 test('pause menu takes its version from WIIUNX2_VERSION, not a literal',()=>{
   const source=read('launcher/src/menu/MainWindow.cpp');
   assert.match(source,/#include "common\/common\.h"/);
-  assert.match(source,/"WiiUNX2 " WIIUNX2_VERSION " experimental/);
+  assert.match(source,/"WiiUNX2 "\s*\+\s*std::string\(WIIUNX2_VERSION\)\s*\+\s*" experimental/);
   assert.doesNotMatch(source,/"[^"\n]*\d+\.\d+\.\d+[^"\n]*"/);
 });
 test('packaging default and SD message do not hardcode a version',()=>{

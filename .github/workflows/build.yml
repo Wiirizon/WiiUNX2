@@ -3,6 +3,7 @@
 on:
   push:
     branches: [ main, master, develop ]
+    tags: [ 'v*' ]
     paths:
       - 'launcher/**'
       - 'dependencies/**'
@@ -47,11 +48,10 @@ jobs:
     - name: Get version info
       id: version
       run: |
-        # Extract version from README or use commit hash
-        if [ -f launcher/VERSION ]; then
-          VERSION=$(cat launcher/VERSION)
-        else
-          VERSION="dev-$(git rev-parse --short HEAD)"
+        VERSION=$(sed -nE 's/^[[:space:]]*#define[[:space:]]+WIIUNX2_VERSION[[:space:]]+"([^"]+)".*/\1/p' launcher/src/common/common.h)
+        if [ -z "$VERSION" ]; then
+          echo "Could not read WIIUNX2_VERSION from launcher/src/common/common.h" >&2
+          exit 1
         fi
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "Building version: $VERSION"

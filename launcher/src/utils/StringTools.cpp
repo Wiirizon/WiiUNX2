@@ -179,7 +179,7 @@ int32_t StringTools::strextcmp(const char *string, const char *extension, char s
     if (!string || !extension)
         return -1;
 
-    char *ptr = strrchr(string, seperator);
+    const char *ptr = strrchr(string, seperator);
     if (!ptr)
         return -1;
 

@@ -159,7 +159,8 @@ void MainWindow::process() {
             auto result=updateCheck.get();updateBusy=false;
             if(result.success&&result.available) {
                 pendingUpdate=std::move(result.selection);pendingUpdateVersion=std::move(result.version);
-                showActionMessage("WiiUNX2 v"+pendingUpdateVersion+" is available.\nThe RPX and its checksum are verified over HTTPS. This project does not sign releases.\nInstall only to the standard Aroma environment with a verified backup.",
+                pendingUpdateTargetPath=std::move(result.targetPath);
+                showActionMessage("WiiUNX2 v"+pendingUpdateVersion+" is available.\nThe RPX and its checksum are verified over HTTPS. This project does not sign releases.\nInstall target: "+result.targetDisplayPath+"\nA verified backup will be kept beside it.",
                                   "Install",ModalAction::InstallUpdate);
             } else showMessage(result.message);
         } catch(const std::exception &) {
@@ -399,9 +400,10 @@ void MainWindow::startUpdateInstall() {
     showMessage("Downloading and verifying the update. The installed menu will not change until verification and backup complete.");
     const auto selection=pendingUpdate;
     const auto version=pendingUpdateVersion;
+    const auto targetPath=pendingUpdateTargetPath;
     try {
-        updateInstall=std::async(std::launch::async,[this,selection,version] {
-            return nx::installUpdate(WIIUNX2_VERSION,version,selection,&updateCancel);
+        updateInstall=std::async(std::launch::async,[this,selection,version,targetPath] {
+            return nx::installUpdate(WIIUNX2_VERSION,version,selection,targetPath,&updateCancel);
         });
     } catch(const std::exception &) {
         updateBusy=false;showMessage("The updater could not be started. The installed menu was not changed.");

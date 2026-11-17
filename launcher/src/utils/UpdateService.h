@@ -6,7 +6,7 @@
 namespace nx {
 struct UpdateCheckResult {
     bool success=false,available=false;
-    std::string version,message;
+    std::string version,message,targetPath,targetDisplayPath;
     UpdateSelection selection;
 };
 struct UpdateOperationResult {
@@ -16,5 +16,6 @@ struct UpdateOperationResult {
 
 UpdateCheckResult checkLatestUpdate(const std::string &currentVersion,const std::atomic<bool> *cancel=nullptr);
 UpdateOperationResult installUpdate(const std::string &currentVersion,const std::string &version,
-                                    const UpdateSelection &selection,const std::atomic<bool> *cancel=nullptr);
+                                    const UpdateSelection &selection,const std::string &expectedTargetPath,
+                                    const std::atomic<bool> *cancel=nullptr);
 }

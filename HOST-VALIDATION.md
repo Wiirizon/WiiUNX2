@@ -9,6 +9,8 @@ From a clean public-source checkout, with Node.js 18+ and a C++17 compiler insta
 
 Updater tests cover direct RPX/checksum asset selection and the backup/replace transaction using in-memory file doubles, including backup, replacement, verification and restoration failures. They do not validate actual SD-card fsync/rename behavior or console recovery.
 
+The updater target test (`launcher/tests/update-target.cpp`) covers safe selection of the running StyleMiiU theme RPX path and the standard Aroma fallback. It does not exercise RPXLoadingModule path reporting on hardware.
+
 CXX may identify the compiler executable. On Windows the test command detects the installed MSYS2 UCRT compiler if available. All subprocesses run without a shell. Tests and archives are written under ignored .test-output; they do not access the console, system files, user SD card or network. Archives include the checkout's reviewed sources/license notices but exclude .git and test outputs. Archive bytes are not guaranteed identical across machines or timestamps.
 
 The source checker deliberately rejects compiled files, logs, audio recordings, private-history filenames, unreviewed fonts, obvious home-directory paths/token patterns and missing required license files. It accepts only the pinned Noto Sans font. Run it before compiling the Wii U binary in that checkout; generated build outputs will be rejected. It is not a full secret scanner, a security audit or legal clearance of the UI.

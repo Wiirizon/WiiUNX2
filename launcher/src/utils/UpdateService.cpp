@@ -1,10 +1,12 @@
 // WiiUNX2 GPL-3.0-or-later. HTTPS, verification, staging, and rollback for issue #7.
 #include "UpdateService.h"
 #include "UpdateInstall.h"
+#include "UpdateTarget.h"
 #include "common/common.h"
 #include <curl/curl.h>
 #include <coreinit/ios.h>
 #include <coreinit/time.h>
+#include <rpxloader/rpxloader.h>
 #include <algorithm>
 #include <cerrno>
 #include <cstdio>
@@ -24,7 +26,6 @@ namespace nx {
 namespace {
 constexpr const char *kLatestReleaseUrl="https://api.github.com/repos/Wiirizon/WiiUNX2/releases/latest";
 constexpr const char *kStandardEnvironment="fs:/vol/external01/wiiu/environments/aroma";
-constexpr const char *kInstallPath="fs:/vol/external01/wiiu/environments/aroma/men.rpx";
 constexpr long kConnectTimeoutSeconds=20;
 constexpr long kTransferTimeoutSeconds=180;
 constexpr unsigned kMaxRedirects=5;
@@ -337,6 +338,41 @@ bool activeStandardEnvironment() {
     return std::strcmp(environment,kStandardEnvironment)==0;
 }
 
+bool resolveActiveUpdateTarget(UpdateTarget &target,std::string &error) {
+    if(!activeStandardEnvironment()) {
+        error="Automatic update disabled: the active environment could not be verified as the standard Aroma environment.";return false;
+    }
+
+    struct stat standardStat{};
+    const std::string standardPath=std::string(kUpdateSdRoot)+kStandardAromaExecutable;
+    const bool standardExists=lstat(standardPath.c_str(),&standardStat)==0&&
+        S_ISREG(standardStat.st_mode)&&standardStat.st_size>0;
+
+    static const RPXLoaderStatus loaderStatus=RPXLoader_InitLibrary();
+    char executablePath[256]{};
+    bool executablePathAvailable=false;
+    std::string reportedPath;
+    if(loaderStatus==RPX_LOADER_RESULT_SUCCESS&&
+       RPXLoader_GetPathOfRunningExecutable(executablePath,sizeof(executablePath))==RPX_LOADER_RESULT_SUCCESS) {
+        const auto *terminator=static_cast<const char *>(std::memchr(executablePath,0,sizeof(executablePath)));
+        if(!terminator) {
+            error="Automatic update disabled: RPXLoadingModule returned an unterminated executable path.";return false;
+        }
+        executablePathAvailable=true;
+        reportedPath.assign(executablePath,static_cast<size_t>(terminator-executablePath));
+    }
+
+    if(!resolveUpdateTarget(executablePathAvailable,reportedPath,standardExists,target)) {
+        error="Automatic update disabled: WiiUNX2's active RPX location could not be identified safely. Install manually or use RPXLoadingModule API v2 or newer.";return false;
+    }
+
+    struct stat targetStat{};
+    if(lstat(target.path.c_str(),&targetStat)!=0||!S_ISREG(targetStat.st_mode)||targetStat.st_size<=0) {
+        error="Automatic update disabled: the detected WiiUNX2 RPX is missing or is not a regular file.";return false;
+    }
+    return true;
+}
+
 std::string stampNow() {
     const uint64_t stamp=static_cast<uint64_t>(OSGetTime());
     static const char digits[]="0123456789abcdef";
@@ -377,25 +413,26 @@ bool prepareSelection(const std::string &version,const UpdateSelection &selectio
     return true;
 }
 
-UpdateOperationResult installSelected(const std::string &version,const UpdateSelection &selection,const std::atomic<bool> *cancel) {
+UpdateOperationResult installSelected(const std::string &version,const UpdateSelection &selection,
+                                      const std::string &expectedTargetPath,const std::atomic<bool> *cancel) {
     UpdateOperationResult result;
     std::string error;
     if(!prepareSelection(version,selection,error)) {result.message=error;return result;}
-    if(!activeStandardEnvironment()) {
-        result.message="Install stopped: the active environment could not be verified as the standard Aroma environment.";return result;
-    }
-    struct stat targetStat{};
-    if(lstat(kInstallPath,&targetStat)!=0||!S_ISREG(targetStat.st_mode)||targetStat.st_size<=0) {
-        result.message="Install stopped: the existing standard Aroma men.rpx is missing or is not a regular file.";return result;
+    UpdateTarget target;
+    if(!resolveActiveUpdateTarget(target,error)) {result.message=error;return result;}
+    if(target.path!=expectedTargetPath) {
+        result.message="Install stopped: the detected WiiUNX2 RPX location changed after confirmation. Check for updates again.";return result;
     }
     if(cancelled(cancel)) {result.message="Update cancelled. The installed menu was not changed.";return result;}
 
     const std::string stamp=stampNow();
-    const std::string rpxPath=std::string(kInstallPath)+".download-"+stamp+".rpx";
-    const std::string checksumPath=std::string(kInstallPath)+".checksum-"+stamp+".tmp";
-    const std::string stagePath=std::string(kInstallPath)+".update-"+stamp+".tmp";
+    const std::string rpxPath=target.path+".download-"+stamp+".rpx";
+    const std::string checksumPath=target.path+".checksum-"+stamp+".tmp";
+    const std::string stagePath=target.path+".update-"+stamp+".tmp";
     const std::string backupLeaf=backupName("men.rpx",stamp);
-    const std::string backupPath=backupLeaf.empty()?std::string():std::string(kStandardEnvironment)+"/"+backupLeaf;
+    const size_t targetSlash=target.path.find_last_of('/');
+    const std::string targetDirectory=targetSlash==std::string::npos?std::string():target.path.substr(0,targetSlash);
+    const std::string backupPath=backupLeaf.empty()||targetDirectory.empty()?std::string():targetDirectory+"/"+backupLeaf;
     const std::string backupPart=backupPath.empty()?std::string():backupPath+".part";
     if(backupPath.empty()||fileExists(rpxPath)||fileExists(checksumPath)||fileExists(stagePath)||
        fileExists(backupPath)||fileExists(backupPart)) {
@@ -440,12 +477,12 @@ UpdateOperationResult installSelected(const std::string &version,const UpdateSel
         cleanup();result.message="The verified menu binary could not be staged on SD.";return result;
     }
     uint64_t oldRpxSize=0;std::string oldRpxHash;
-    if(!hashRegularFile(kInstallPath,256ull*1024*1024,oldRpxSize,oldRpxHash)) {
+    if(!hashRegularFile(target.path,256ull*1024*1024,oldRpxSize,oldRpxHash)) {
         cleanup();result.message="The existing menu could not be hashed safely; it was not replaced.";return result;
     }
-    const std::string restorePart=std::string(kInstallPath)+".restore-"+stamp+".part";
+    const std::string restorePart=target.path+".restore-"+stamp+".part";
     SdUpdateFiles files;
-    const UpdateReplaceResult replacement=replaceWithVerifiedBackup(files,kInstallPath,stagePath,backupPath,
+    const UpdateReplaceResult replacement=replaceWithVerifiedBackup(files,target.path,stagePath,backupPath,
         backupPart,restorePart,selection.rpx.size,apiRpxDigest,oldRpxSize,oldRpxHash);
     if(replacement!=UpdateReplaceResult::Installed) {
         cleanup();
@@ -454,17 +491,17 @@ UpdateOperationResult installSelected(const std::string &version,const UpdateSel
         else if(replacement==UpdateReplaceResult::BackupPublishFailed)
             result.message="The verified backup could not be published; the installed menu was not replaced.";
         else if(replacement==UpdateReplaceResult::ReplaceFailed)
-            result.message="Atomic replacement was not supported. The original menu remains installed and its verified backup is at the Aroma environment's men.rpx.backup-"+stamp+".";
+            result.message="Atomic replacement was not supported. The original menu remains installed and its verified backup is at "+target.displayPath+".backup-"+stamp+".";
         else if(replacement==UpdateReplaceResult::Restored)
-            result.message="The replacement failed verification and the previous menu was restored. The verified backup is preserved as men.rpx.backup-"+stamp+".";
+            result.message="The replacement failed verification and the previous menu was restored. The verified backup is preserved at "+target.displayPath+".backup-"+stamp+".";
         else if(replacement==UpdateReplaceResult::RecoveryRequired)
-            result.message="The replacement failed verification. Power off and manually restore the verified men.rpx.backup-"+stamp+" backup.";
+            result.message="The replacement failed verification. Power off and manually restore the verified backup at "+target.displayPath+".backup-"+stamp+".";
         else result.message="The update transaction found an unexpected path state; the installed menu was not intentionally replaced.";
         return result;
     }
     cleanup();
     result.success=true;
-    result.message="WiiUNX2 v"+version+" was installed. Restart the console to load it. The previous menu is preserved as men.rpx.backup-"+stamp+".";
+    result.message="WiiUNX2 v"+version+" was installed at "+target.displayPath+". Restart the console to load it. The previous menu is preserved beside it as men.rpx.backup-"+stamp+".";
     return result;
 }
 }  // namespace
@@ -490,18 +527,23 @@ UpdateCheckResult checkLatestUpdate(const std::string &currentVersion,const std:
     if(!detail::normalizeSha256Hex(selection.rpx.sha256,rpxDigest)||!detail::normalizeSha256Hex(selection.checksum.sha256,checksumDigest)) {
         result.message="This release has no valid GitHub SHA-256 asset digests; installation is disabled.";return result;
     }
+    UpdateTarget target;
+    if(!resolveActiveUpdateTarget(target,result.message)) return result;
     result.success=true;result.available=true;result.version=release.tag[0]=='v'?release.tag.substr(1):release.tag;
     result.selection=std::move(selection);
+    result.targetPath=std::move(target.path);
+    result.targetDisplayPath=std::move(target.displayPath);
     result.message="WiiUNX2 v"+result.version+" is available.";
     return result;
 }
 
 UpdateOperationResult installUpdate(const std::string &currentVersion,const std::string &version,
-                                    const UpdateSelection &selection,const std::atomic<bool> *cancel) {
+                                    const UpdateSelection &selection,const std::string &expectedTargetPath,
+                                    const std::atomic<bool> *cancel) {
     Version current,latest;
     if(!parseVersion(currentVersion,current)||!parseVersion(version,latest)||compareVersions(latest,current)<=0) {
         return {false,"Install stopped: the update version is not newer than the installed version."};
     }
-    return installSelected(version,selection,cancel);
+    return installSelected(version,selection,expectedTargetPath,cancel);
 }
 }  // namespace nx

@@ -1,5 +1,30 @@
 # WiiUNX2 changelog
 
+## 0.7.3 — Stable release
+
+- Correct the account-selection heading from "Select a user" to "Select an
+  account."
+- Keep the update check in the main-menu options view instead of showing it
+  as an action inside the selected-game options view.
+- Make options controls more explicit and easier to identify.
+- Rotate rectangular selected-app borders while cycling their cyan-blue RGB
+  phases, matching the existing 480-frame animation cadence.
+- Improve HTTPS update-check failures by identifying curl connection and
+  certificate errors before suggesting a Wii U internet check.
+- Investigate title launch handoffs and change normal installed-title
+  launches to use the MCP-resolved title path, matching disc and custom-title
+  handoffs. Console confirmation is still required.
+
+### Validation and known limitations
+
+- Theme and source checks cover the account wording, options layout,
+  rectangular highlight motion, update transport, and existing menu behavior.
+- The Windows host runner could not reliably execute every generated test
+  executable in this environment. Wii U cross-build and hardware retesting
+  are still required.
+- Mario Kart 8 and NSMB2 via 3Dii U remain unconfirmed and may be affected
+  by plugins, emulator compatibility, or title handoff behavior.
+
 ## 0.7.2 — Stable release
 
 - Make the selected app's cyan-blue focus border cycle more visibly, matching

@@ -58,7 +58,7 @@ MainWindow::MainWindow(int32_t w, int32_t h, MenuMusic *sound)
    label("",23,glm::vec4(.12f,.36f,.62f,1)),
    message("",26,glm::vec4(.12f,.12f,.12f,1)),
    brand("WiiUNX2",19,glm::vec4(.32f,.32f,.32f,1)),
-   accountHeading("Select a user",30,glm::vec4(.12f,.12f,.12f,1)),
+   accountHeading("Select an account",30,glm::vec4(.12f,.12f,.12f,1)),
    profileName("",22,glm::vec4(.12f,.12f,.12f,1)),
    libraryStatus("",18,glm::vec4(.4f,.4f,.4f,1)),
    searchHeading("Find software",30,glm::vec4(.12f,.12f,.12f,1)),
@@ -345,7 +345,9 @@ void MainWindow::draw(CVideo *v) {
                 0.97f+offset*std::sin(phase+2.0943951f),
                 0.97f+offset*std::sin(phase+4.1887902f),
                 1.0f));
+            tileFocus->setAngle(gradientAngle);
             drawImage(*tileFocus,v,x,330);
+            tileFocus->setAngle(0.f);
         }
         if(i<visible.size() && tiles[visible[i]].image) drawImage(*tiles[visible[i]].image,v,x,330);
         else drawImage(*tileBlank,v,x,330);
@@ -623,7 +625,8 @@ void MainWindow::launch(uint64_t id) {
         launching=true;
         launchFrame=frame;
         recordLaunch("regular",id,info.appType,patchResult,info.path);
-        SYSLaunchTitle(id);
+        int32_t launchResult=_SYSLaunchTitleByPathFromLauncher(info.path,0);
+        DEBUG_FUNCTION_LINE("Launch title by path %016llX result %d",(unsigned long long)id,int(launchResult));
         return;
     }
     }
@@ -823,10 +826,9 @@ void MainWindow::showOptions() {
     requestSound(MenuSound::Click);
     if(focusRow==0 && !visible.empty()) {
         char id[32];snprintf(id,sizeof(id),"%016llX",(unsigned long long)selectedTile().id);
-        showActionMessage(selectedTile().name+"\n\nTitle ID: "+id+"\n"+selectedTile().path+
-                          "\n\nCheck for a newer WiiUNX2 release?","Check updates",ModalAction::CheckUpdate);
+        showMessage(selectedTile().name+"\n\nTitle ID: "+id+"\n"+selectedTile().path);
     } else {
-        showActionMessage("WiiUNX2 "+std::string(WIIUNX2_VERSION)+" experimental\n\nD-pad / stick: select   A: open   B: back\nL / R: skip four titles\nTouch once to select, again to open\n\nCheck for a newer release?","Check updates",ModalAction::CheckUpdate);
+        showActionMessage("WiiUNX2 "+std::string(WIIUNX2_VERSION)+"\n\nCONTROLS\nA: Select or open\nB: Back\nD-pad / stick: Move\nL / R: Skip four titles\nX: Switch account\nY: Search\n-: Sort\n+: Options\n\nONLINE UPDATE","Check updates",ModalAction::CheckUpdate);
     }
 }
 

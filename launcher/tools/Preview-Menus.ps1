@@ -29,7 +29,7 @@ $font=[Drawing.Font]::new('Segoe UI',22,[Drawing.FontStyle]::Regular,[Drawing.Gr
 $g.DrawString('User 1',$font,[Drawing.Brushes]::DarkSlateGray,[Drawing.PointF]::new(128,60),[Drawing.StringFormat]::GenericTypographic)
 $font.Dispose();Save-Preview 'profile-hover-preview.png'
 Start-Preview
-Shade;Icon 'nxAccountPanel.png' 640 360;Text 'Select a user' 30 640 220
+Shade;Icon 'nxAccountPanel.png' 640 360;Text 'Select an account' 30 640 220
 for($i=0;$i -lt 6;$i++) {
     $x=230+$i*164
     if($i -eq 2) {Icon 'nxAccountFocus.png' $x 360}

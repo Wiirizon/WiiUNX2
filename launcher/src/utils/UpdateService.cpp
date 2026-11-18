@@ -181,7 +181,7 @@ bool requestUrl(const std::string &initialUrl,uint64_t maxBytes,const std::atomi
         if(response.cancelled||cancelled(cancel)) {response.cancelled=true;return false;}
         if(response.overflow) {response.error="The server response exceeded the size limit.";return false;}
         if(transfer!=CURLE_OK) {
-            if(response.error.empty()) response.error="The GitHub HTTPS request failed (connection or certificate validation).";
+            if(response.error.empty()) response.error="Could not reach GitHub over HTTPS ("+std::string(curl_easy_strerror(transfer))+"). Check the Wii U internet connection.";
             return false;
         }
         if(!response.error.empty()) return false;

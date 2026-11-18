@@ -13,7 +13,8 @@
   certificate errors before suggesting a Wii U internet check.
 - Investigate title launch handoffs and change normal installed-title
   launches to use the MCP-resolved title path, matching disc and custom-title
-  handoffs. Console confirmation is still required.
+  handoffs. The first release candidate required a build-type correction;
+  console confirmation is still required.
 
 ### Validation and known limitations
 

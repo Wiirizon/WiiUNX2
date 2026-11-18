@@ -625,8 +625,8 @@ void MainWindow::launch(uint64_t id) {
         launching=true;
         launchFrame=frame;
         recordLaunch("regular",id,info.appType,patchResult,info.path);
-        int32_t launchResult=_SYSLaunchTitleByPathFromLauncher(info.path,0);
-        DEBUG_FUNCTION_LINE("Launch title by path %016llX result %d",(unsigned long long)id,int(launchResult));
+        DEBUG_FUNCTION_LINE("Launch title by path %016llX",(unsigned long long)id);
+        _SYSLaunchTitleByPathFromLauncher(info.path,0);
         return;
     }
     }

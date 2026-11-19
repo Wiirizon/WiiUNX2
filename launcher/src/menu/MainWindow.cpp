@@ -1,6 +1,7 @@
 // WiiUNX2, GPL-3.0-or-later. Original menu implementation for launchiine.
 #include "MainWindow.h"
 #include "HomeGeometry.h"
+#include "gui/SelectionGradient.h"
 #include "IconPlan.h"
 #include "Library.h"
 #include "Reconcile.h"
@@ -77,7 +78,8 @@ MainWindow::MainWindow(int32_t w, int32_t h, MenuMusic *sound)
     for (auto name:dockFiles) dock.push_back(asset(name));
     profile=asset("nxProfile.png");profileBacking=asset("nxProfileBacking.png");ring=asset("nxRing.png");
     network=asset("nxNetwork.png");
-    tileBlank=asset("nxTileBlank.png");tileFocus=asset("nxTileFocus.png");tileShadow=asset("nxTileShadow.png");dockSurface=asset("nxDock.png");
+    tileBlank=asset("nxTileBlank.png");tileShadow=asset("nxTileShadow.png");dockSurface=asset("nxDock.png");
+    for(unsigned i=0;i<8;++i) tileFocusSegments.push_back(asset(("nxTileFocus"+std::to_string(i)+".png").c_str()));
     modalPanel=asset("nxModalPanel.png");accountPanel=asset("nxAccountPanel.png");
     accountCard=asset("nxAccountCard.png");accountFocus=asset("nxAccountFocus.png");
     searchPanel=asset("nxSearchPanel.png");keyCard=asset("nxKeyCard.png");keyFocus=asset("nxKeyFocus.png");
@@ -120,7 +122,7 @@ MainWindow::~MainWindow() {
     gameList.titleAdded.disconnect(this);
     gameList.titleUpdated.disconnect(this);
     gameList.titleListChanged.disconnect(this);
-    tiles.clear(); dock.clear();prompts.clear();modalPrompts.clear();searchPrompts.clear();accountPrompts.clear(); profile.reset();profileBacking.reset();ring.reset();network.reset();tileBlank.reset();tileFocus.reset();tileShadow.reset();dockSurface.reset();
+    tiles.clear(); dock.clear();tileFocusSegments.clear();prompts.clear();modalPrompts.clear();searchPrompts.clear();accountPrompts.clear(); profile.reset(); profileBacking.reset(); ring.reset(); network.reset();tileBlank.reset();tileShadow.reset();dockSurface.reset();
     modalPanel.reset();accountPanel.reset();accountCard.reset();accountFocus.reset();searchPanel.reset();keyCard.reset();keyFocus.reset();
     for(auto *data:assetData) Resources::RemoveImageData(data);
     if(acReady) ACFinalize();
@@ -338,16 +340,12 @@ void MainWindow::draw(CVideo *v) {
         if(x < nx::cullLeft || x > nx::cullRight) continue;
         drawImage(*tileShadow,v,x,330);
         if(i==selected && focusRow==0 && !visible.empty()) {
-            const float phase=float(frame%480)*(6.28318530718f/480.f);
-            const float offset=0.10f;
-            tileFocus->setColorIntensity(glm::vec4(
-                0.97f+offset*std::sin(phase),
-                0.97f+offset*std::sin(phase+2.0943951f),
-                0.97f+offset*std::sin(phase+4.1887902f),
-                1.0f));
-            tileFocus->setAngle(gradientAngle);
-            drawImage(*tileFocus,v,x,330);
-            tileFocus->setAngle(0.f);
+            const float phase=nx::selectionGradientPhase(frame);
+            for(size_t segment=0;segment<tileFocusSegments.size();++segment) {
+                const auto color=nx::selectionGradientColor(float(segment)-phase);
+                tileFocusSegments[segment]->setColorIntensity(glm::vec4(color[0],color[1],color[2],color[3]));
+                drawImage(*tileFocusSegments[segment],v,x,330);
+            }
         }
         if(i<visible.size() && tiles[visible[i]].image) drawImage(*tiles[visible[i]].image,v,x,330);
         else drawImage(*tileBlank,v,x,330);
@@ -375,14 +373,14 @@ void MainWindow::draw(CVideo *v) {
     }
 }
 void MainWindow::showMessage(const std::string &text,bool power) {
-    message.setText(text.c_str()); modal=true; powerConfirm=power;
+    message.setFontSize(26);message.setText(text.c_str()); modal=true; powerConfirm=power;
     modalAction=ModalAction::None;
     requestSound(MenuSound::Click);
     modalPrompts[0].caption->setText(power?"Cancel":"Back");
     modalPrompts[1].caption->setText(power?"Power off":"OK");
 }
 void MainWindow::showActionMessage(const std::string &text,const char *action,ModalAction next) {
-    message.setText(text.c_str());modal=true;powerConfirm=false;modalAction=next;
+    message.setFontSize(26);message.setText(text.c_str());modal=true;powerConfirm=false;modalAction=next;
     requestSound(MenuSound::Click);
     modalPrompts[0].caption->setText("Back");modalPrompts[1].caption->setText(action);
 }
@@ -625,8 +623,7 @@ void MainWindow::launch(uint64_t id) {
         launching=true;
         launchFrame=frame;
         recordLaunch("regular",id,info.appType,patchResult,info.path);
-        DEBUG_FUNCTION_LINE("Launch title by path %016llX",(unsigned long long)id);
-        _SYSLaunchTitleByPathFromLauncher(info.path,0);
+        SYSLaunchTitle(id);
         return;
     }
     }
@@ -828,7 +825,12 @@ void MainWindow::showOptions() {
         char id[32];snprintf(id,sizeof(id),"%016llX",(unsigned long long)selectedTile().id);
         showMessage(selectedTile().name+"\n\nTitle ID: "+id+"\n"+selectedTile().path);
     } else {
-        showActionMessage("WiiUNX2 "+std::string(WIIUNX2_VERSION)+"\n\nCONTROLS\nA: Select or open\nB: Back\nD-pad / stick: Move\nL / R: Skip four titles\nX: Switch account\nY: Search\n-: Sort\n+: Options\n\nONLINE UPDATE","Check updates",ModalAction::CheckUpdate);
+        showActionMessage("WiiUNX2 "+std::string(WIIUNX2_VERSION)+
+                          "\nCONTROLS\nMove: D-pad / left stick\nSelect / open: A    Back: B\n"
+                          "Skip 4 titles: L / R\nAccounts: X    Search: Y\nSort: -    Options: +\n"
+                          "Touch: Select once; tap again to open\n\nONLINE UPDATE",
+                          "Check updates",ModalAction::CheckUpdate);
+        message.setFontSize(20);
     }
 }
 

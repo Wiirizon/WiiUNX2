@@ -1,6 +1,7 @@
 // WiiUNX2 GPL-3.0-or-later. Uses Aroma's official bundle client.
 #include "Homebrew.h"
 #include "HomebrewPolicy.h"
+#include "HomebrewCache.h"
 #include "Metadata.h"
 #include "fs/FSUtils.h"
 #include "utils/logger.h"
@@ -88,6 +89,24 @@ std::vector<std::string> homebrewPaths() {
     }),paths.end());
     DEBUG_FUNCTION_LINE("Direct SD scan: %u homebrew apps",unsigned(paths.size()));return paths;
 }
+static bool fileStamp(const std::string &path,HomebrewFileStamp &stamp) {
+    struct stat status{};
+    if(stat(path.c_str(),&status)!=0||!S_ISREG(status.st_mode)||status.st_size<0) return false;
+    stamp.valid=true;
+    stamp.size=static_cast<uint64_t>(status.st_size);
+    stamp.inode=static_cast<uint64_t>(status.st_ino);
+    stamp.modified=static_cast<int64_t>(status.st_mtime);
+    stamp.changed=static_cast<int64_t>(status.st_ctime);
+    return true;
+}
+std::string homebrewCacheKey(const std::string &path) {
+    const std::string fullPath="fs:/vol/external01/"+path;
+    HomebrewFileStamp app{},metadata{};
+    if(!fileStamp(fullPath,app)) return {};
+    const bool isBundle=bundled(path);
+    if(!isBundle&&!fileStamp(fullPath.substr(0,fullPath.find_last_of('/')+1)+"meta.xml",metadata)) return {};
+    return nx::homebrewCacheKey(path,isBundle,app,metadata);
+}
 static std::vector<uint8_t> resource(const std::string &path,const char *file,uint32_t limit) {
     std::vector<uint8_t> bytes;
     if(!bundled(path)) {
@@ -113,7 +132,8 @@ static std::vector<uint8_t> resource(const std::string &path,const char *file,ui
     }
     WUHBUtils_UnmountBundle("nx2meta",&result);return bytes;
 }
-std::string homebrewName(const std::string &path) {
+std::string homebrewName(const std::string &path,bool *metadataValid) {
+    if(metadataValid) *metadataValid=false;
     auto bytes=resource(path,bundled(path)?"meta.ini":"meta.xml",65536);std::string text(bytes.begin(),bytes.end()),name;
     if(bundled(path)) {
         size_t pos=0;while(pos<text.size()) {
@@ -127,6 +147,7 @@ std::string homebrewName(const std::string &path) {
             pos=end+1;
         }
     } else name=xmlTitle(text);
+    if(metadataValid) *metadataValid=!name.empty();
     if(name.empty()) {name=path.substr(path.find_last_of('/')+1);name=name.substr(0,name.find_last_of('.'));}
     return name;
 }

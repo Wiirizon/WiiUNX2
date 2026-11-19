@@ -79,7 +79,7 @@ MainWindow::MainWindow(int32_t w, int32_t h, MenuMusic *sound)
     profile=asset("nxProfile.png");profileBacking=asset("nxProfileBacking.png");ring=asset("nxRing.png");
     network=asset("nxNetwork.png");
     tileBlank=asset("nxTileBlank.png");tileShadow=asset("nxTileShadow.png");dockSurface=asset("nxDock.png");
-    for(unsigned i=0;i<8;++i) tileFocusSegments.push_back(asset(("nxTileFocus"+std::to_string(i)+".png").c_str()));
+    for(unsigned i=0;i<8;++i) tileFocusFrames.push_back(asset(("nxTileFocus"+std::to_string(i)+".png").c_str()));
     modalPanel=asset("nxModalPanel.png");accountPanel=asset("nxAccountPanel.png");
     accountCard=asset("nxAccountCard.png");accountFocus=asset("nxAccountFocus.png");
     searchPanel=asset("nxSearchPanel.png");keyCard=asset("nxKeyCard.png");keyFocus=asset("nxKeyFocus.png");
@@ -122,7 +122,7 @@ MainWindow::~MainWindow() {
     gameList.titleAdded.disconnect(this);
     gameList.titleUpdated.disconnect(this);
     gameList.titleListChanged.disconnect(this);
-    tiles.clear(); dock.clear();tileFocusSegments.clear();prompts.clear();modalPrompts.clear();searchPrompts.clear();accountPrompts.clear(); profile.reset(); profileBacking.reset(); ring.reset(); network.reset();tileBlank.reset();tileShadow.reset();dockSurface.reset();
+    tiles.clear(); dock.clear();tileFocusFrames.clear();prompts.clear();modalPrompts.clear();searchPrompts.clear();accountPrompts.clear(); profile.reset(); profileBacking.reset(); ring.reset(); network.reset();tileBlank.reset();tileShadow.reset();dockSurface.reset();
     modalPanel.reset();accountPanel.reset();accountCard.reset();accountFocus.reset();searchPanel.reset();keyCard.reset();keyFocus.reset();
     for(auto *data:assetData) Resources::RemoveImageData(data);
     if(acReady) ACFinalize();
@@ -341,10 +341,15 @@ void MainWindow::draw(CVideo *v) {
         drawImage(*tileShadow,v,x,330);
         if(i==selected && focusRow==0 && !visible.empty()) {
             const float phase=nx::selectionGradientPhase(frame);
-            for(size_t segment=0;segment<tileFocusSegments.size();++segment) {
-                const auto color=nx::selectionGradientColor(float(segment)-phase);
-                tileFocusSegments[segment]->setColorIntensity(glm::vec4(color[0],color[1],color[2],color[3]));
-                drawImage(*tileFocusSegments[segment],v,x,330);
+            const size_t current=size_t(phase);
+            const size_t next=(current+1)%tileFocusFrames.size();
+            const float blend=phase-float(current);
+            tileFocusFrames[current]->setAlpha(1.f);
+            drawImage(*tileFocusFrames[current],v,x,330);
+            if(blend>0.f) {
+                tileFocusFrames[next]->setAlpha(blend);
+                drawImage(*tileFocusFrames[next],v,x,330);
+                tileFocusFrames[next]->setAlpha(1.f);
             }
         }
         if(i<visible.size() && tiles[visible[i]].image) drawImage(*tiles[visible[i]].image,v,x,330);
@@ -624,6 +629,7 @@ void MainWindow::launch(uint64_t id) {
         launchFrame=frame;
         recordLaunch("regular",id,info.appType,patchResult,info.path);
         SYSLaunchTitle(id);
+        recordLaunch("regular-returned",id,info.appType,patchResult,info.path);
         return;
     }
     }
@@ -826,9 +832,9 @@ void MainWindow::showOptions() {
         showMessage(selectedTile().name+"\n\nTitle ID: "+id+"\n"+selectedTile().path);
     } else {
         showActionMessage("WiiUNX2 "+std::string(WIIUNX2_VERSION)+
-                          "\nCONTROLS\nMove: D-pad / left stick\nSelect / open: A    Back: B\n"
+                          "\n\nCONTROLS\n\nMove: D-pad / left stick\nSelect / open: A    Back: B\n"
                           "Skip 4 titles: L / R\nAccounts: X    Search: Y\nSort: -    Options: +\n"
-                          "Touch: Select once; tap again to open\n\nONLINE UPDATE",
+                          "Touch: Select once; tap again to open",
                           "Check updates",ModalAction::CheckUpdate);
         message.setFontSize(20);
     }

@@ -78,6 +78,45 @@ function RoundedPath($x,$y,$w,$h,$r) {
     $p.AddArc(($x+$w-$d),($y+$h-$d),$d,$d,0,90);$p.AddArc($x,($y+$h-$d),$d,$d,90,90)
     $p.CloseFigure();return $p
 }
+function SelectionGradientAsset($name,$phase) {
+    $size=272
+    $scale=3
+    $bmp=[Drawing.Bitmap]::new(($size*$scale),($size*$scale))
+    $g=[Drawing.Graphics]::FromImage($bmp)
+    $g.SmoothingMode=[Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $g.Clear([Drawing.Color]::Transparent)
+    $g.ScaleTransform($scale,$scale)
+    $path=RoundedPath 8 8 256 256 15
+    $pen=Pen '#FFFFFF' 4
+    $g.DrawPath($pen,$path)
+    $pen.Dispose();$path.Dispose();$g.Dispose()
+
+    $small=[Drawing.Bitmap]::new($size,$size)
+    $down=[Drawing.Graphics]::FromImage($small)
+    $down.InterpolationMode=[Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $down.DrawImage($bmp,0,0,$size,$size)
+    $down.Dispose();$bmp.Dispose()
+
+    $stops=@(@(89,211,232),@(153,128,240),@(245,153,194),@(89,211,232))
+    $center=$size/2.0
+    for($y=0;$y -lt $size;$y++) {
+        for($x=0;$x -lt $size;$x++) {
+            $angle=[Math]::Atan2(($y-$center),($x-$center))
+            $segment=((($angle/(2*[Math]::PI))+1)%1)*8-$phase
+            $position=($segment/8)-[Math]::Floor($segment/8)
+            $position*=3
+            $index=[Math]::Min(2,[int][Math]::Floor($position))
+            $blend=$position-$index
+            $alpha=$small.GetPixel($x,$y).A
+            $r=[int][Math]::Round($stops[$index][0]+($stops[$index+1][0]-$stops[$index][0])*$blend)
+            $green=[int][Math]::Round($stops[$index][1]+($stops[$index+1][1]-$stops[$index][1])*$blend)
+            $blue=[int][Math]::Round($stops[$index][2]+($stops[$index+1][2]-$stops[$index][2])*$blend)
+            $small.SetPixel($x,$y,[Drawing.Color]::FromArgb($alpha,$r,$green,$blue))
+        }
+    }
+    $small.Save((Join-Path $target $name),[Drawing.Imaging.ImageFormat]::Png)
+    $small.Dispose()
+}
 Asset 'nxTileMask.png' 256 {
     param($g)
     $outer=[Drawing.Drawing2D.GraphicsPath]::new();$outer.AddRectangle([Drawing.Rectangle]::new(0,0,256,256))
@@ -86,16 +125,7 @@ Asset 'nxTileMask.png' 256 {
     $b.Dispose();$inner.Dispose();$outer.Dispose()
 }
 for($segment=0;$segment -lt 8;$segment++) {
-    $segmentIndex=$segment
-    Asset ("nxTileFocus"+$segmentIndex+".png") 272 {
-        param($g)
-        $path=RoundedPath 3 3 266 266 15
-        $wedge=[Drawing.Drawing2D.GraphicsPath]::new()
-        $wedge.AddPie(-100,-100,472,472,($segmentIndex*45-24),48)
-        $g.SetClip($wedge,[Drawing.Drawing2D.CombineMode]::Intersect)
-        $pen=Pen '#FFFFFF' 4;$g.DrawPath($pen,$path)
-        $g.ResetClip();$pen.Dispose();$wedge.Dispose();$path.Dispose()
-    }
+    SelectionGradientAsset ("nxTileFocus"+$segment+".png") $segment
 }
 Asset 'nxTileShadow.png' 280 {
     param($g)

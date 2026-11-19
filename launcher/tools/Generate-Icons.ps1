@@ -85,11 +85,17 @@ Asset 'nxTileMask.png' 256 {
     $b=[Drawing.SolidBrush]::new([Drawing.Color]::FromArgb(233,233,233));$g.FillPath($b,$outer)
     $b.Dispose();$inner.Dispose();$outer.Dispose()
 }
-Asset 'nxTileFocus.png' 272 {
-    param($g)
-    $path=RoundedPath 3 3 266 266 15
-    $brush=[Drawing.Drawing2D.LinearGradientBrush]::new([Drawing.Point]::new(0,0),[Drawing.Point]::new(272,272),[Drawing.ColorTranslator]::FromHtml('#39D6D1'),[Drawing.ColorTranslator]::FromHtml('#839AF0'))
-    $pen=[Drawing.Pen]::new($brush,4);$g.DrawPath($pen,$path);$pen.Dispose();$brush.Dispose();$path.Dispose()
+for($segment=0;$segment -lt 8;$segment++) {
+    $segmentIndex=$segment
+    Asset ("nxTileFocus"+$segmentIndex+".png") 272 {
+        param($g)
+        $path=RoundedPath 3 3 266 266 15
+        $wedge=[Drawing.Drawing2D.GraphicsPath]::new()
+        $wedge.AddPie(-100,-100,472,472,($segmentIndex*45-24),48)
+        $g.SetClip($wedge,[Drawing.Drawing2D.CombineMode]::Intersect)
+        $pen=Pen '#FFFFFF' 4;$g.DrawPath($pen,$path)
+        $g.ResetClip();$pen.Dispose();$wedge.Dispose();$path.Dispose()
+    }
 }
 Asset 'nxTileShadow.png' 280 {
     param($g)

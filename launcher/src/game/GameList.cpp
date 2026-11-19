@@ -93,7 +93,19 @@ bool GameList::loadNext() {
     if(nextMetadata>=fullGameList.size()) return true;
     auto *info=fullGameList[nextMetadata++];
     if(nx::isHomebrew(info->titleId)) {
-        info->name=nx::homebrewName(info->gamePath);titleUpdated(info);return nextMetadata>=fullGameList.size();
+        ensureNamesLoaded();
+        const auto cacheKey=nx::homebrewCacheKey(info->gamePath);
+        auto cached=names.find(info->titleId);
+        if(!cacheKey.empty()&&cached!=names.end()&&cached->second.path==cacheKey) info->name=cached->second.name;
+        else {
+            bool metadataValid=false;
+            info->name=nx::homebrewName(info->gamePath,&metadataValid);
+            if(metadataValid&&!cacheKey.empty()) {
+                if(names.size()>=8192) names.clear();
+                names[info->titleId]={cacheKey,info->name,0};
+            }
+        }
+        titleUpdated(info);return nextMetadata>=fullGameList.size();
     }
     ensureNamesLoaded();
     auto cached=names.find(info->titleId);

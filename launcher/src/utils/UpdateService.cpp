@@ -2,6 +2,7 @@
 #include "UpdateService.h"
 #include "UpdateInstall.h"
 #include "UpdateTarget.h"
+#include "UpdateCaBundle.h"
 #include "common/common.h"
 #include <curl/curl.h>
 #include <coreinit/ios.h>
@@ -110,11 +111,17 @@ int transferProgress(void *opaque,curl_off_t,curl_off_t,curl_off_t,curl_off_t) {
 }
 
 bool configureCurl(CURL *curl,TransferContext &ctx,HttpResponse &response,curl_slist *headers) {
+    curl_blob caBundle{
+        const_cast<char *>(kGithubUpdateCaBundle),
+        sizeof(kGithubUpdateCaBundle)-1,
+        CURL_BLOB_COPY
+    };
     return curl_easy_setopt(curl,CURLOPT_PROTOCOLS_STR,"https")==CURLE_OK&&
            curl_easy_setopt(curl,CURLOPT_REDIR_PROTOCOLS_STR,"https")==CURLE_OK&&
            curl_easy_setopt(curl,CURLOPT_FOLLOWLOCATION,0L)==CURLE_OK&&
            curl_easy_setopt(curl,CURLOPT_SSL_VERIFYPEER,1L)==CURLE_OK&&
            curl_easy_setopt(curl,CURLOPT_SSL_VERIFYHOST,2L)==CURLE_OK&&
+           curl_easy_setopt(curl,CURLOPT_CAINFO_BLOB,&caBundle)==CURLE_OK&&
            curl_easy_setopt(curl,CURLOPT_CONNECTTIMEOUT,kConnectTimeoutSeconds)==CURLE_OK&&
            curl_easy_setopt(curl,CURLOPT_TIMEOUT,kTransferTimeoutSeconds)==CURLE_OK&&
            curl_easy_setopt(curl,CURLOPT_LOW_SPEED_LIMIT,128L)==CURLE_OK&&
@@ -173,6 +180,10 @@ bool requestUrl(const std::string &initialUrl,uint64_t maxBytes,const std::atomi
         if(configured) transfer=curl_easy_perform(curl.get());
         curl_slist_free_all(headers);
         if(!configured) {response.error="Could not configure a verified HTTPS request.";return false;}
+        if(transfer==CURLE_PEER_FAILED_VERIFICATION) {
+            response.error="GitHub was reachable, but Wii U TLS certificate verification failed. Check the console date and time and ensure its system certificates are current.";
+            return false;
+        }
         curl_easy_getinfo(curl.get(),CURLINFO_RESPONSE_CODE,&response.status);
         long verifyResult=-1;
         if(curl_easy_getinfo(curl.get(),CURLINFO_SSL_VERIFYRESULT,&verifyResult)!=CURLE_OK||verifyResult!=0) {

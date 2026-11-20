@@ -53,7 +53,8 @@ or a dock item is selected.
 Open Options from the software row or dock, choose **Check updates**, then
 choose **Install** only after reviewing the version prompt. The updater
 downloads only the standalone `men.rpx` and `men.rpx.sha256` release assets
-over verified HTTPS. It verifies both GitHub asset digests, checks that the
+over verified HTTPS using the bundled GitHub trust anchors. It verifies both
+GitHub asset digests, checks that the
 sidecar names `men.rpx` and matches its hash, and validates the Wii U RPX
 header before touching the installed file. It confirms the active environment
 is standard Aroma, then asks RPXLoadingModule for the running executable path.
@@ -68,8 +69,11 @@ change other plugins, modules, settings, or caches.
 
 GitHub releases are not cryptographically signed. HTTPS and matching hashes
 provide transport integrity, not independent publisher authentication. The
-confirmation prompt states this limitation. Wii U TLS trust and SD replacement
-behavior have not been proven on hardware; keep a manual SD recovery path.
+confirmation prompt states this limitation. The updater bundles ISRG Root X1
+and USERTrust ECC for GitHub's currently observed API and asset chains; peer
+and hostname verification remain enabled. Wii U TLS trust and SD replacement
+behavior have not been proven on hardware. Check the console date/time and
+keep a manual SD recovery path.
 
 ## Build and validate
 

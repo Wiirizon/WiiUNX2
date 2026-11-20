@@ -86,7 +86,7 @@ function SelectionGradientAsset($name,$phase) {
     $g.SmoothingMode=[Drawing.Drawing2D.SmoothingMode]::AntiAlias
     $g.Clear([Drawing.Color]::Transparent)
     $g.ScaleTransform($scale,$scale)
-    $path=RoundedPath 8 8 256 256 15
+    $path=RoundedPath 4 4 264 264 20
     $pen=Pen '#FFFFFF' 4
     $g.DrawPath($pen,$path)
     $pen.Dispose();$path.Dispose();$g.Dispose()

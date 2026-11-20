@@ -107,6 +107,20 @@ function assertBleedRule(before,after,width,height) {
 }
 
 let changed=0;
+for(let frame=0;frame<8;frame++) {
+  const name=`nxTileFocus${frame}.png`;
+  const {width,height,rgba}=decodeRgba(path.join(root,'launcher/data/images',name));
+  assert.deepEqual([width,height],[272,272],`${name}: unexpected frame size`);
+  let left=width,top=height,right=-1,bottom=-1;
+  for(let y=0;y<height;y++) {
+    for(let x=0;x<width;x++) {
+      if(rgba[(y*width+x)*4+3]===0) continue;
+      left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x);bottom=Math.max(bottom,y);
+    }
+  }
+  assert.ok(left<=3&&top<=3&&right>=width-4&&bottom>=height-4,
+            `${name}: selection outline must sit outside the 256px tile`);
+}
 for(const name of assets) {
   const {width,height,rgba}=decodeRgba(path.join(root,'launcher/data/images',name));
   if(name==='nxProfileBacking.png') {

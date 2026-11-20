@@ -10,7 +10,9 @@ WiiUNX2's replacement launcher is derived from [launchiine](https://github.com/w
 
 The binaries also link devkitPro wut, FreeType, HarfBuzz, GD, PNG, JPEG, zlib, libmad, Tremor, Ogg, bzip2, Brotli, curl and Mbed TLS libraries. Their installed package licenses are included in the distribution's licenses directory. devkitPro supplies their corresponding source through its package/project repositories.
 
-The Wii U updater uses devkitPro's wiiu-curl with Mbed TLS. TLS peer and hostname verification are required; the updater downloads the standalone RPX and its checksum, then checks both against GitHub release digests. Releases are not cryptographically signed, so these checks establish integrity over HTTPS, not independent publisher authenticity.
+The Wii U updater uses devkitPro's wiiu-curl with Mbed TLS. It includes the ISRG Root X1 and USERTrust ECC public trust-anchor certificates from Mozilla's CA bundle for GitHub's observed API and asset chains; certificate expiry and chain rotation must be reviewed before updating these anchors. TLS peer and hostname verification are required; the updater downloads the standalone RPX and its checksum, then checks both against GitHub release digests. Releases are not cryptographically signed, so these checks establish integrity over HTTPS, not independent publisher authenticity.
+
+The Mozilla CA bundle is maintained at https://curl.se/ca/cacert.pem. The updater does not embed the full bundle; only the two currently observed GitHub trust anchors are included in `launcher/src/utils/UpdateCaBundle.h`.
 
 Research references (not shipped as part of the program):
 - https://github.com/wiiu-env/MochaPayload/blob/master/source/ios_mcp/source/mcp_loadfile.c — environment-relative men.rpx replacement.

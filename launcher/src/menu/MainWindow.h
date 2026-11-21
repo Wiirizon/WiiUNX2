@@ -51,8 +51,10 @@ private:
     void refreshAccounts();
     void openAccounts();
     void selectAccount();
+    void continueWithActiveAccount();
     void drawAccounts(CVideo *video);
     void loadVisibleIcons(float target);
+    void stopTitleWorkers();
     void titleChanged(gameInfo *info);
     void listChanged(GameList *list);
     void draw(CVideo *v);
@@ -119,7 +121,7 @@ private:
     std::string lastTitle, lastLabel;
     GuiText libraryStatus, searchHeading, searchQuery;
     std::vector<Account> accounts;
-    bool actReady=false, accountsOpen=false;
+    bool actReady=false, accountsOpen=false, accountPromptRequired=false;
     int accountIndex=0;
     uint8_t activeSlot=0;
     std::vector<GuiImageData *> assetData;

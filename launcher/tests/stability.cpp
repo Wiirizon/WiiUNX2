@@ -1,4 +1,5 @@
 #include "../src/game/Metadata.h"
+#include "../src/menu/AccountPrompt.h"
 #include "../src/menu/HomeGeometry.h"
 #include "../../dependencies/libgui/include/gui/Utf8.h"
 #include <cassert>
@@ -39,5 +40,11 @@ int main() {
     assert(nx::hitAccount(312,333,0,12)==-1); // inter-card gap
     assert(nx::hitAccount(230,270,0,12)==-1);
     assert(nx::hitAccount(230,333,0,0)==-1);
-    std::cout<<"Metadata fallback, Unicode, truncated/oversized/RLE icons and account paging passed\n";
+    assert(nx::shouldPromptForAccount(0,false));
+    assert(!nx::shouldPromptForAccount(0,true));
+    assert(!nx::shouldPromptForAccount(1,false));
+    assert(nx::accountChoiceMatchesBoot(100,105,6));
+    assert(nx::accountChoiceMatchesBoot(105,100,6));
+    assert(!nx::accountChoiceMatchesBoot(100,106,6));
+    std::cout<<"Metadata, Unicode, account-prompt policy, validated icons and account paging passed\n";
 }

@@ -1,5 +1,23 @@
 # WiiUNX2 changelog
 
+## 0.7.8 — Stable release
+
+- Stop the title-loader and pending readers before title handoff; use the Wii U
+  no-splash title-launch API for regular titles.
+- Ask for an account at startup when no default user is configured, once per
+  system boot.
+- Document that some title launches still hang through the StyleMiiU RPX
+  wrapper and that the attached Launchiine files did not include its UDP log.
+
+### Validation and known limitations
+
+- Focused account-prompt host tests pass. The full local host runner is blocked
+  by Windows Application Control, and the local Wii U build is blocked by an
+  installed libgui/WUT thread-entry signature mismatch.
+- The launch changes and startup account prompt still require console testing.
+  Title-specific hangs through StyleMiiU RPX remain unresolved; use direct
+  Aroma `men.rpx` replacement for affected titles.
+
 ## 0.7.7 — Stable release
 
 - Show RPX download progress and percentage in the in-app updater, with

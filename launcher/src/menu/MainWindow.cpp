@@ -389,10 +389,18 @@ void MainWindow::showActionMessage(const std::string &text,const char *action,Mo
     requestSound(MenuSound::Click);
     modalPrompts[0].caption->setText("Back");modalPrompts[1].caption->setText(action);
 }
+void MainWindow::showUpdateProgress(const std::string &text) {
+    message.setFontSize(26);message.setText(text.c_str());modal=true;powerConfirm=false;modalAction=ModalAction::None;
+    requestSound(MenuSound::Click);
+    modalPrompts[0].caption->setText("Cancel");modalPrompts[1].caption->setText("Please wait");
+}
 void MainWindow::startUpdateCheck() {
-    if(updateBusy) return;
+    if(updateBusy) {
+        showUpdateProgress("An update operation is still in progress. Wait for it to finish before checking again.");
+        return;
+    }
     updateCancel=false;updateBusy=true;
-    showMessage("Checking the latest WiiUNX2 release over verified HTTPS...");
+    showUpdateProgress("Checking the latest WiiUNX2 release over verified HTTPS.\nPlease wait; keep the console powered on.");
     try {
         updateCheck=std::async(std::launch::async,[this] {return nx::checkLatestUpdate(WIIUNX2_VERSION,&updateCancel);});
     } catch(const std::exception &) {
@@ -400,9 +408,16 @@ void MainWindow::startUpdateCheck() {
     }
 }
 void MainWindow::startUpdateInstall() {
-    if(updateBusy||pendingUpdateVersion.empty()) return;
+    if(updateBusy) {
+        showUpdateProgress("An update operation is still in progress. Wait for it to finish before installing again.");
+        return;
+    }
+    if(pendingUpdateVersion.empty()) {
+        showMessage("No verified update is ready to install. Check for updates again.");
+        return;
+    }
     updateCancel=false;updateBusy=true;
-    showMessage("Downloading and verifying the update. The installed menu will not change until verification and backup complete.");
+    showUpdateProgress("Downloading and verifying WiiUNX2 v"+pendingUpdateVersion+".\nThis may take a few minutes. Keep the console powered on; the existing menu is not replaced until verification and backup complete.");
     const auto selection=pendingUpdate;
     const auto version=pendingUpdateVersion;
     const auto targetPath=pendingUpdateTargetPath;
@@ -437,8 +452,18 @@ void MainWindow::handleInput(GuiController *c) {
     if(launching || shutdownFrame) return;
     uint32_t pressed=c->data.buttons_d;
     if(modal) {
-        if(pressed&T::BUTTON_B) { modal=false;modalAction=ModalAction::None;requestSound(MenuSound::Back);return; }
         bool click=(c->chanIdx==0 && c->data.touched && !c->lastData.touched)||(c->chanIdx!=0 && c->data.validPointer && (pressed&T::BUTTON_A));
+        if(updateBusy) {
+            const bool cancelRequested=(pressed&T::BUTTON_B)||
+                (click&&hitPrompt(modalPrompts,c->data.x+640,360-c->data.y,480)==0);
+            if(cancelRequested&&!updateCancel.exchange(true)) {
+                message.setText("Cancellation requested. The updater may finish a protected file operation before it can stop. Keep the console powered on until a result appears.");
+                modalPrompts[0].caption->setText("Cancelling");
+                requestSound(MenuSound::Back);
+            }
+            return;
+        }
+        if(pressed&T::BUTTON_B) { modal=false;modalAction=ModalAction::None;requestSound(MenuSound::Back);return; }
         if(click) {int i=hitPrompt(modalPrompts,c->data.x+640,360-c->data.y,480);if(i==0){modal=false;modalAction=ModalAction::None;requestSound(MenuSound::Back);}else if(i==1) confirmModal();}
         else if(pressed&T::BUTTON_A) confirmModal();
         return;

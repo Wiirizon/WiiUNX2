@@ -359,12 +359,17 @@ void MainWindow::draw(CVideo *v) {
             const size_t current=size_t(phase);
             const size_t next=(current+1)%tileFocusFrames.size();
             const float blend=phase-float(current);
+            constexpr float focusFrameScale=280.f/288.f;
+            tileFocusFrames[current]->setScale(focusFrameScale);
             tileFocusFrames[current]->setAlpha(1.f);
             drawImage(*tileFocusFrames[current],v,x,330);
+            tileFocusFrames[current]->setScale(1.f);
             if(blend>0.f) {
+                tileFocusFrames[next]->setScale(focusFrameScale);
                 tileFocusFrames[next]->setAlpha(blend);
                 drawImage(*tileFocusFrames[next],v,x,330);
                 tileFocusFrames[next]->setAlpha(1.f);
+                tileFocusFrames[next]->setScale(1.f);
             }
         }
         if(i<visible.size() && tiles[visible[i]].image) drawImage(*tiles[visible[i]].image,v,x,330);

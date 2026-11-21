@@ -1,5 +1,21 @@
 # WiiUNX2 changelog
 
+## 0.7.4 — Stable release
+
+- Increase the gap between the selected app's animated gradient border and its
+  icon to eight logical pixels.
+- Bundle the GitHub trust anchors used by the verified in-app update check.
+
+### Validation and known limitations
+
+- The user reports that a Wii U running 0.7.3 now completes the update check
+  without an HTTPS error and correctly reports 0.7.3 as up to date. This
+  confirms the check-only path in that setup, not downloading or installing
+  an update.
+- The generated focus-frame clearance and updater trust-bundle checks pass on
+  the host. Console validation of the new border spacing, downloading,
+  installation, and rollback is still required.
+
 ## 0.7.3 — Stable release
 
 - Correct the account-selection heading from "Select a user" to "Select an

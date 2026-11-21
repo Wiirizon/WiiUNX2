@@ -126,7 +126,7 @@ jobs:
           3. Verify the checksum, then copy `men.rpx` to `SD:/wiiu/environments/aroma/men.rpx`.
           4. To remove WiiUNX2, restore the backup; if no file existed before installation, delete the `men.rpx` you added.
 
-          ### Install using StyleMiiU
+          ### Install using StyleMiiU RPX fork
           1. Download `men.rpx` from this release and [the latest `stylemiiu.wps`](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX/releases/latest/download/stylemiiu.wps).
           2. Install `stylemiiu.wps` in `SD:/wiiu/environments/<environment>/plugins/`; see the [plugin instructions](https://github.com/Wiirizon/StyleMiiU-Plugin-RPX#readme).
           3. Copy `men.rpx` to `SD:/wiiu/themes/WiiUNX2/men.rpx`.

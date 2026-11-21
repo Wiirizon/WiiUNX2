@@ -115,9 +115,8 @@ jobs:
           build-output/men.rpx
           build-output/men.rpx.sha256
           build-output/BUILD_INFO.txt
+        name: WiiUNX2 v${{ steps.version.outputs.version }}
         body: |
-          ## WiiUNX2 ${{ steps.version.outputs.version }}
-
           ### Changelog
           See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/CHANGELOG.md) for this version's changes and validation notes.
 

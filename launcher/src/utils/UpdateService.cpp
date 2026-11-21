@@ -48,6 +48,9 @@ struct TransferContext {
     FILE *file=nullptr;
     uint64_t maxBytes=0,bytes=0;
     const std::atomic<bool> *cancel=nullptr;
+    UpdateProgressCallback progress=nullptr;
+    void *progressContext=nullptr;
+    UpdateProgressStage progressStage=UpdateProgressStage::DownloadingRpx;
 };
 
 bool cancelled(const std::atomic<bool> *flag) {return flag&&flag->load(std::memory_order_relaxed);}
@@ -101,8 +104,17 @@ size_t receiveHeader(char *data,size_t size,size_t count,void *opaque) {
     }
     return bytes;
 }
-int transferProgress(void *opaque,curl_off_t,curl_off_t,curl_off_t,curl_off_t) {
+int transferProgress(void *opaque,curl_off_t downloadTotal,curl_off_t downloaded,curl_off_t,curl_off_t) {
     auto *context=static_cast<TransferContext *>(opaque);
+    if(context&&context->file&&context->progress) {
+        const uint64_t total=downloadTotal>0
+            ?std::min<uint64_t>(static_cast<uint64_t>(downloadTotal),context->maxBytes)
+            :context->maxBytes;
+        const uint64_t received=downloaded>0
+            ?std::min<uint64_t>(static_cast<uint64_t>(downloaded),context->maxBytes)
+            :0;
+        context->progress(context->progressContext,context->progressStage,received,total);
+    }
     if(context&&cancelled(context->cancel)) {
         context->response->cancelled=true;
         return 1;
@@ -140,7 +152,9 @@ bool configureCurl(CURL *curl,TransferContext &ctx,HttpResponse &response,curl_s
 }
 
 bool requestUrl(const std::string &initialUrl,uint64_t maxBytes,const std::atomic<bool> *cancel,
-                HttpResponse &response,const std::string &filePath={}) {
+                HttpResponse &response,const std::string &filePath={},
+                UpdateProgressCallback progress=nullptr,void *progressContext=nullptr,
+                UpdateProgressStage progressStage=UpdateProgressStage::DownloadingRpx) {
     static std::once_flag initOnce;
     static CURLcode initResult=CURLE_FAILED_INIT;
     std::call_once(initOnce,[] {initResult=curl_global_init(CURL_GLOBAL_DEFAULT);});
@@ -166,7 +180,7 @@ bool requestUrl(const std::string &initialUrl,uint64_t maxBytes,const std::atomi
         response.status=0;response.body.clear();response.headers.clear();response.error.clear();response.overflow=false;
         std::unique_ptr<CURL,decltype(&curl_easy_cleanup)> curl(curl_easy_init(),curl_easy_cleanup);
         if(!curl) {response.error="Could not create an HTTPS request.";return false;}
-        TransferContext context{&response,download.value,maxBytes,0,cancel};
+        TransferContext context{&response,download.value,maxBytes,0,cancel,progress,progressContext,progressStage};
         curl_slist *headers=curl_slist_append(nullptr,"Accept: application/vnd.github+json");
         curl_slist *versionHeader=headers?curl_slist_append(headers,"X-GitHub-Api-Version: 2022-11-28"):nullptr;
         if(!versionHeader) {
@@ -425,8 +439,10 @@ bool prepareSelection(const std::string &version,const UpdateSelection &selectio
 }
 
 UpdateOperationResult installSelected(const std::string &version,const UpdateSelection &selection,
-                                      const std::string &expectedTargetPath,const std::atomic<bool> *cancel) {
+                                      const std::string &expectedTargetPath,const std::atomic<bool> *cancel,
+                                      UpdateProgressCallback progress,void *progressContext) {
     UpdateOperationResult result;
+    if(progress) progress(progressContext,UpdateProgressStage::Preparing,0,0);
     std::string error;
     if(!prepareSelection(version,selection,error)) {result.message=error;return result;}
     UpdateTarget target;
@@ -452,9 +468,12 @@ UpdateOperationResult installSelected(const std::string &version,const UpdateSel
     auto cleanup=[&] {unlink(rpxPath.c_str());unlink(checksumPath.c_str());unlink(stagePath.c_str());};
 
     HttpResponse response;
-    if(!requestUrl(selection.rpx.downloadUrl,selection.rpx.size,cancel,response,rpxPath)) {
+    if(progress) progress(progressContext,UpdateProgressStage::DownloadingRpx,0,selection.rpx.size);
+    if(!requestUrl(selection.rpx.downloadUrl,selection.rpx.size,cancel,response,rpxPath,
+                   progress,progressContext,UpdateProgressStage::DownloadingRpx)) {
         cleanup();result.message=response.cancelled?"Update cancelled. The installed menu was not changed.":response.error;return result;
     }
+    if(progress) progress(progressContext,UpdateProgressStage::Verifying,0,0);
     std::string apiRpxDigest;
     detail::normalizeSha256Hex(selection.rpx.sha256,apiRpxDigest);
     if(!hashRegularFile(rpxPath,selection.rpx.size,apiRpxDigest)) {
@@ -463,9 +482,12 @@ UpdateOperationResult installSelected(const std::string &version,const UpdateSel
     if(cancelled(cancel)) {cleanup();result.message="Update cancelled. The installed menu was not changed.";return result;}
 
     response=HttpResponse{};
-    if(!requestUrl(selection.checksum.downloadUrl,selection.checksum.size,cancel,response,checksumPath)) {
+    if(progress) progress(progressContext,UpdateProgressStage::DownloadingChecksum,0,selection.checksum.size);
+    if(!requestUrl(selection.checksum.downloadUrl,selection.checksum.size,cancel,response,checksumPath,
+                   progress,progressContext,UpdateProgressStage::DownloadingChecksum)) {
         cleanup();result.message=response.cancelled?"Update cancelled. The installed menu was not changed.":response.error;return result;
     }
+    if(progress) progress(progressContext,UpdateProgressStage::Verifying,0,0);
     std::string apiChecksumDigest;
     detail::normalizeSha256Hex(selection.checksum.sha256,apiChecksumDigest);
     if(!hashRegularFile(checksumPath,selection.checksum.size,apiChecksumDigest)) {
@@ -493,6 +515,7 @@ UpdateOperationResult installSelected(const std::string &version,const UpdateSel
     }
     const std::string restorePart=target.path+".restore-"+stamp+".part";
     SdUpdateFiles files;
+    if(progress) progress(progressContext,UpdateProgressStage::Installing,0,0);
     const UpdateReplaceResult replacement=replaceWithVerifiedBackup(files,target.path,stagePath,backupPath,
         backupPart,restorePart,selection.rpx.size,apiRpxDigest,oldRpxSize,oldRpxHash);
     if(replacement!=UpdateReplaceResult::Installed) {
@@ -550,11 +573,12 @@ UpdateCheckResult checkLatestUpdate(const std::string &currentVersion,const std:
 
 UpdateOperationResult installUpdate(const std::string &currentVersion,const std::string &version,
                                     const UpdateSelection &selection,const std::string &expectedTargetPath,
-                                    const std::atomic<bool> *cancel) {
+                                    const std::atomic<bool> *cancel,
+                                    UpdateProgressCallback progress,void *progressContext) {
     Version current,latest;
     if(!parseVersion(currentVersion,current)||!parseVersion(version,latest)||compareVersions(latest,current)<=0) {
         return {false,"Install stopped: the update version is not newer than the installed version."};
     }
-    return installSelected(version,selection,expectedTargetPath,cancel);
+    return installSelected(version,selection,expectedTargetPath,cancel,progress,progressContext);
 }
 }  // namespace nx

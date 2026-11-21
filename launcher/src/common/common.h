@@ -7,7 +7,7 @@ extern "C" {
 
 #define LAUNCHIINE_VERSION "v0.1"
 /* Single source of the release version: the pause menu and launcher/tools/Package.ps1 read this line. */
-#define WIIUNX2_VERSION    "0.7.6"
+#define WIIUNX2_VERSION    "0.7.7"
 #define META_PATH          "/meta"
 
 #ifdef __cplusplus

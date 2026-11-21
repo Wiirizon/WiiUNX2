@@ -20,6 +20,8 @@ int main(int argc,char **argv) {
         "launch 0005000E10102000 stage=regular type=3 patch=0 path=/usr/x");
     assert(nx::formatLaunchRecord(1,"disc",0,nx::kLaunchNotCalled,"")==
         "launch 0000000000000001 stage=disc type=0 patch=not-called path=");
+    assert(nx::formatLaunchRecord(1,"wii-disc",0,nx::kLaunchNotCalled,"/vol/odd")==
+        "launch 0000000000000001 stage=wii-disc type=0 patch=not-called path=/vol/odd");
     // Hostile path: newline, NUL, CR, non-ASCII, spaces and 10 KB. Output must stay one short printable line.
     std::string hostile="a\nb";hostile.push_back('\0');
     hostile+=std::string("c\r\xC3\xA9 ");

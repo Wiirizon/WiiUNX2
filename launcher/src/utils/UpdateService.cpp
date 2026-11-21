@@ -461,8 +461,10 @@ UpdateOperationResult installSelected(const std::string &version,const UpdateSel
     const std::string targetDirectory=targetSlash==std::string::npos?std::string():target.path.substr(0,targetSlash);
     const std::string backupPath=backupLeaf.empty()||targetDirectory.empty()?std::string():targetDirectory+"/"+backupLeaf;
     const std::string backupPart=backupPath.empty()?std::string():backupPath+".part";
+    const std::string restorePart=target.path+".restore-"+stamp+".part";
+    const std::string displacedPart=target.path+".replace-"+stamp+".part";
     if(backupPath.empty()||fileExists(rpxPath)||fileExists(checksumPath)||fileExists(stagePath)||
-       fileExists(backupPath)||fileExists(backupPart)) {
+       fileExists(backupPath)||fileExists(backupPart)||fileExists(restorePart)||fileExists(displacedPart)) {
         result.message="Install stopped: a temporary or backup path already exists.";return result;
     }
     auto cleanup=[&] {unlink(rpxPath.c_str());unlink(checksumPath.c_str());unlink(stagePath.c_str());};
@@ -513,11 +515,10 @@ UpdateOperationResult installSelected(const std::string &version,const UpdateSel
     if(!hashRegularFile(target.path,256ull*1024*1024,oldRpxSize,oldRpxHash)) {
         cleanup();result.message="The existing menu could not be hashed safely; it was not replaced.";return result;
     }
-    const std::string restorePart=target.path+".restore-"+stamp+".part";
     SdUpdateFiles files;
     if(progress) progress(progressContext,UpdateProgressStage::Installing,0,0);
     const UpdateReplaceResult replacement=replaceWithVerifiedBackup(files,target.path,stagePath,backupPath,
-        backupPart,restorePart,selection.rpx.size,apiRpxDigest,oldRpxSize,oldRpxHash);
+        backupPart,restorePart,displacedPart,selection.rpx.size,apiRpxDigest,oldRpxSize,oldRpxHash);
     if(replacement!=UpdateReplaceResult::Installed) {
         cleanup();
         if(replacement==UpdateReplaceResult::BackupFailed)
@@ -525,11 +526,11 @@ UpdateOperationResult installSelected(const std::string &version,const UpdateSel
         else if(replacement==UpdateReplaceResult::BackupPublishFailed)
             result.message="The verified backup could not be published; the installed menu was not replaced.";
         else if(replacement==UpdateReplaceResult::ReplaceFailed)
-            result.message="Atomic replacement was not supported. The original menu remains installed and its verified backup is at "+target.displayPath+".backup-"+stamp+".";
+            result.message="The replacement could not be installed. The original menu remains installed and its verified backup is at "+target.displayPath+".backup-"+stamp+".";
         else if(replacement==UpdateReplaceResult::Restored)
             result.message="The replacement failed verification and the previous menu was restored. The verified backup is preserved at "+target.displayPath+".backup-"+stamp+".";
         else if(replacement==UpdateReplaceResult::RecoveryRequired)
-            result.message="The replacement failed verification. Power off and manually restore the verified backup at "+target.displayPath+".backup-"+stamp+".";
+            result.message="The update could not be completed or rolled back. Power off and manually restore the verified backup at "+target.displayPath+".backup-"+stamp+".";
         else result.message="The update transaction found an unexpected path state; the installed menu was not intentionally replaced.";
         return result;
     }

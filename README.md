@@ -64,7 +64,11 @@ For the StyleMiiU route it updates the exact `SD:/wiiu/themes/.../men.rpx`
 currently running; for a direct install it updates
 `SD:/wiiu/environments/aroma/men.rpx`. A verified timestamped
 `men.rpx.backup-*` is kept beside the selected RPX, and the console must be
-restarted after a successful update. If RPXLoadingModule cannot report the
+restarted after a successful update. If the SD filesystem refuses to replace
+the existing file directly, the updater uses a same-directory rename fallback;
+keep the console powered on and do not remove the SD card until it finishes.
+If power is lost during that brief replacement window, restore the verified
+backup. If RPXLoadingModule cannot report the
 running theme path (API v2+), the updater fails safely and asks for a manual
 update rather than guessing. It does not update the StyleMiiU `.wps` plugin or
 change other plugins, modules, settings, or caches.

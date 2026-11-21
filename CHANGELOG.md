@@ -1,5 +1,20 @@
 # WiiUNX2 changelog
 
+## 0.7.9 — Stable release
+
+- Support SD filesystems that reject replacing an existing RPX with `rename()`.
+  The updater now uses a same-directory rename fallback after publishing a
+  verified backup, and attempts rollback if the new RPX cannot be installed or
+  verified.
+
+### Validation and known limitations
+
+- Host transaction tests cover the non-overwriting rename path, install failure,
+  rollback, and recovery-required handling. Hardware testing is still needed.
+- The fallback briefly moves the old RPX out of the active path. Keep the
+  console powered on and do not remove the SD card during installation; a
+  power loss in that brief interval may require restoring the verified backup.
+
 ## 0.7.8 — Stable release
 
 - Stop the title-loader and pending readers before title handoff; use the Wii U

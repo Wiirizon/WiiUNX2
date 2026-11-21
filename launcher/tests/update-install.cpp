@@ -10,7 +10,9 @@ int failures=0;
 
 struct FakeFiles {
     std::map<std::string,std::string> files{{"target","old"},{"staged","new"}};
-    bool failBackupCopy=false,failBackupPublish=false,failReplace=false,corruptReplacement=false,failRestore=false;
+    bool failBackupCopy=false,failBackupPublish=false,failReplace=false,failTargetMove=false;
+    bool failStagedMove=false,failDisplacedRestore=false,rejectOverwrite=false;
+    bool corruptReplacement=false,failRestore=false;
     bool isRegular(const std::string &path) const {return files.find(path)!=files.end();}
     bool exists(const std::string &path) const {return isRegular(path);}
     bool copyVerified(const std::string &source,const std::string &destination) {
@@ -22,11 +24,15 @@ struct FakeFiles {
         return files[destination]==found->second;
     }
     bool renameNoReplace(const std::string &source,const std::string &destination) {
+        if((source=="target"&&destination=="displaced.part"&&failTargetMove)||
+           (source=="staged"&&destination=="target"&&failStagedMove)||
+           (source=="displaced.part"&&destination=="target"&&failDisplacedRestore)) return false;
         if(failBackupPublish||!isRegular(source)||exists(destination)) return false;
-        files[destination]=files[source];files.erase(source);return true;
+        files[destination]=corruptReplacement&&source=="staged"?"corrupt":files[source];
+        files.erase(source);return true;
     }
     bool atomicReplace(const std::string &source,const std::string &destination) {
-        if((source=="staged"&&failReplace)||!isRegular(source)) return false;
+        if((source=="staged"&&failReplace)||!isRegular(source)||(rejectOverwrite&&exists(destination))) return false;
         files[destination]=corruptReplacement&&source=="staged"?"corrupt":files[source];
         files.erase(source);return true;
     }
@@ -39,7 +45,7 @@ struct FakeFiles {
 
 nx::UpdateReplaceResult replace(FakeFiles &files) {
     return nx::replaceWithVerifiedBackup(files,"target","staged","backup","backup.part","restore.part",
-                                         3,"new",3,"old");
+                                         "displaced.part",3,"new",3,"old");
 }
 void testSuccessfulInstallRetainsOriginal() {
     FakeFiles files;
@@ -58,9 +64,30 @@ void testBackupWriteAndPublishFailuresLeaveTargetUntouched() {
     CHECK(publishFailure.files["target"]=="old"&&!publishFailure.exists("backup.part"));
 }
 void testReplacementFailureRetainsOriginalAndVerifiedBackup() {
-    FakeFiles files;files.failReplace=true;
+    FakeFiles files;files.failReplace=true;files.failTargetMove=true;
     CHECK(replace(files)==nx::UpdateReplaceResult::ReplaceFailed);
     CHECK(files.files["target"]=="old");
+    CHECK(files.files["backup"]=="old");
+}
+void testNonOverwritingFilesystemUsesRollbackProtectedFallback() {
+    FakeFiles files;files.rejectOverwrite=true;
+    CHECK(replace(files)==nx::UpdateReplaceResult::Installed);
+    CHECK(files.files["target"]=="new");
+    CHECK(files.files["backup"]=="old");
+    CHECK(!files.exists("displaced.part"));
+}
+void testFallbackInstallFailureRestoresOriginal() {
+    FakeFiles files;files.rejectOverwrite=true;files.failStagedMove=true;
+    CHECK(replace(files)==nx::UpdateReplaceResult::ReplaceFailed);
+    CHECK(files.files["target"]=="old");
+    CHECK(files.files["backup"]=="old");
+    CHECK(!files.exists("displaced.part"));
+}
+void testFallbackRecoveryFailureKeepsVerifiedOriginal() {
+    FakeFiles files;files.rejectOverwrite=true;files.failStagedMove=true;files.failDisplacedRestore=true;
+    CHECK(replace(files)==nx::UpdateReplaceResult::RecoveryRequired);
+    CHECK(!files.exists("target"));
+    CHECK(files.files["displaced.part"]=="old");
     CHECK(files.files["backup"]=="old");
 }
 void testPostReplaceVerificationRestoresOriginal() {
@@ -68,6 +95,14 @@ void testPostReplaceVerificationRestoresOriginal() {
     CHECK(replace(files)==nx::UpdateReplaceResult::Restored);
     CHECK(files.files["target"]=="old");
     CHECK(files.files["backup"]=="old");
+}
+void testFallbackVerificationRestoresOriginal() {
+    FakeFiles files;files.rejectOverwrite=true;files.corruptReplacement=true;
+    CHECK(replace(files)==nx::UpdateReplaceResult::Restored);
+    CHECK(files.files["target"]=="old");
+    CHECK(files.files["backup"]=="old");
+    CHECK(!files.exists("displaced.part"));
+    CHECK(!files.exists("staged"));
 }
 void testFailedRestoreRequiresManualRecovery() {
     FakeFiles files;files.corruptReplacement=true;files.failRestore=true;
@@ -86,6 +121,9 @@ void testUnexpectedExistingBackupFailsClosed() {
 int main() {
     testSuccessfulInstallRetainsOriginal();testBackupWriteAndPublishFailuresLeaveTargetUntouched();
     testReplacementFailureRetainsOriginalAndVerifiedBackup();testPostReplaceVerificationRestoresOriginal();
-    testFailedRestoreRequiresManualRecovery();testUnexpectedExistingBackupFailsClosed();
+    testNonOverwritingFilesystemUsesRollbackProtectedFallback();testFallbackInstallFailureRestoresOriginal();
+    testFallbackRecoveryFailureKeepsVerifiedOriginal();
+    testFallbackVerificationRestoresOriginal();testFailedRestoreRequiresManualRecovery();
+    testUnexpectedExistingBackupFailsClosed();
     return failures?1:0;
 }

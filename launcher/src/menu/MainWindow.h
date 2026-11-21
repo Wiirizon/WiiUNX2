@@ -64,6 +64,7 @@ private:
     void showOptions();
     void showActionMessage(const std::string &text,const char *action,ModalAction modalAction);
     void showUpdateProgress(const std::string &text);
+    static void updateProgressCallback(void *context,nx::UpdateProgressStage stage,uint64_t received,uint64_t total);
     void startUpdateCheck();
     void startUpdateInstall();
     void activate();
@@ -94,6 +95,8 @@ private:
     std::future<nx::UpdateCheckResult> updateCheck;
     std::future<nx::UpdateOperationResult> updateInstall;
     std::atomic<bool> updateCancel{false};
+    std::atomic<nx::UpdateProgressStage> updateProgressStage{nx::UpdateProgressStage::Checking};
+    std::atomic<uint64_t> updateBytesReceived{0},updateBytesTotal{0};
     bool updateBusy=false;
     nx::UpdateSelection pendingUpdate;
     std::string pendingUpdateVersion,pendingUpdateTargetPath;
@@ -111,6 +114,7 @@ private:
     std::recursive_mutex guiMutex, tilesMutex;
     std::vector<Tile> tiles;
     GuiImage background, modalShade, batteryOutline, batteryInside, batteryFill, batteryTip;
+    GuiImage updateProgressTrack, updateProgressFill;
     GuiText title, clockText, label, message, brand, accountHeading, profileName;
     std::string lastTitle, lastLabel;
     GuiText libraryStatus, searchHeading, searchQuery;
@@ -122,7 +126,7 @@ private:
     std::vector<std::unique_ptr<GuiImage>> dock;
     std::unique_ptr<GuiImage> profile, profileBacking, ring, network, tileBlank, tileShadow, dockSurface;
     std::vector<std::unique_ptr<GuiImage>> tileFocusFrames;
-    std::unique_ptr<GuiImage> modalPanel, accountPanel, accountCard, accountFocus, searchPanel, keyCard, keyFocus;
+    std::unique_ptr<GuiImage> modalPanel, accountPanel, accountCard, searchPanel, keyCard, keyFocus;
     struct FooterPrompt {
         std::unique_ptr<GuiImage> badge;
         std::unique_ptr<GuiText> caption;

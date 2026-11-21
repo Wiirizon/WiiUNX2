@@ -1,5 +1,23 @@
 # WiiUNX2 changelog
 
+## 0.7.7 — Stable release
+
+- Show RPX download progress and percentage in the in-app updater, with
+  separate status messages for verification and installation.
+- Animate the selected account rectangle with the same moving gradient used
+  by the selected app highlight.
+- Document that recent-history filenames are indexed by active ACT account
+  slot.
+
+### Validation and known limitations
+
+- Focused host tests for gradient timing and updater core logic pass. The full
+  local host runner is blocked by Windows Application Control, and the local
+  Wii U build is blocked by an existing libgui/WUT thread-entry signature
+  mismatch; GitHub build validation is required.
+- Progress rendering, account-highlight appearance, and update installation
+  still require Wii U hardware validation.
+
 ## 0.7.6 — Stable release
 
 - Detect Wii discs reported as `MCP_APP_TYPE_GAME_WII`, show a dedicated disc

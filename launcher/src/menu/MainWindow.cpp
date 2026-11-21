@@ -61,6 +61,7 @@ MainWindow::MainWindow(int32_t w, int32_t h, MenuMusic *sound)
  : background(w,h,GX2Color{233,233,233,255}), modalShade(w,h,GX2Color{0,0,0,130}),
    batteryOutline(32,18,GX2Color{70,70,70,255}), batteryInside(28,14,GX2Color{233,233,233,255}),
    batteryFill(24,10,GX2Color{67,160,44,255}), batteryTip(3,8,GX2Color{70,70,70,255}),
+   updateProgressTrack(620,12,GX2Color{190,190,190,255}),updateProgressFill(620,12,GX2Color{24,135,205,255}),
    title("Loading software...",26,glm::vec4(.12f,.12f,.12f,1)),
    clockText("",23,glm::vec4(.1f,.1f,.1f,1)),
    label("",23,glm::vec4(.12f,.36f,.62f,1)),
@@ -88,7 +89,7 @@ MainWindow::MainWindow(int32_t w, int32_t h, MenuMusic *sound)
     tileBlank=asset("nxTileBlank.png");tileShadow=asset("nxTileShadow.png");dockSurface=asset("nxDock.png");
     for(unsigned i=0;i<8;++i) tileFocusFrames.push_back(asset(("nxTileFocus"+std::to_string(i)+".png").c_str()));
     modalPanel=asset("nxModalPanel.png");accountPanel=asset("nxAccountPanel.png");
-    accountCard=asset("nxAccountCard.png");accountFocus=asset("nxAccountFocus.png");
+    accountCard=asset("nxAccountCard.png");
     searchPanel=asset("nxSearchPanel.png");keyCard=asset("nxKeyCard.png");keyFocus=asset("nxKeyFocus.png");
     const char *badges[]={"nxButtonY.png","nxButtonMinus.png","nxButtonPlus.png","nxButtonA.png"};
     const char *captions[]={"Search","Sort","Options","OK"};
@@ -130,7 +131,7 @@ MainWindow::~MainWindow() {
     gameList.titleUpdated.disconnect(this);
     gameList.titleListChanged.disconnect(this);
     tiles.clear(); dock.clear();tileFocusFrames.clear();prompts.clear();modalPrompts.clear();searchPrompts.clear();accountPrompts.clear(); profile.reset(); profileBacking.reset(); ring.reset(); network.reset();tileBlank.reset();tileShadow.reset();dockSurface.reset();
-    modalPanel.reset();accountPanel.reset();accountCard.reset();accountFocus.reset();searchPanel.reset();keyCard.reset();keyFocus.reset();
+    modalPanel.reset();accountPanel.reset();accountCard.reset();searchPanel.reset();keyCard.reset();keyFocus.reset();
     for(auto *data:assetData) Resources::RemoveImageData(data);
     if(acReady) ACFinalize();
 }
@@ -393,6 +394,43 @@ void MainWindow::draw(CVideo *v) {
     if(searchOpen) drawSearch(v);
     if(modal) {
         drawImage(modalShade,v,640,360); drawImage(*modalPanel,v,640,360);
+        if(updateBusy) {
+            std::string status;
+            const auto stage=updateProgressStage.load();
+            if(updateCancel.load()) status="Cancellation requested. Waiting for a safe stopping point.";
+            else switch(stage) {
+                case nx::UpdateProgressStage::Checking:
+                    status="Checking for updates over verified HTTPS.\nPlease keep the console powered on.";
+                    break;
+                case nx::UpdateProgressStage::Preparing:
+                    status="Preparing the verified update download.\nThe installed menu has not been changed.";
+                    break;
+                case nx::UpdateProgressStage::DownloadingRpx: {
+                    const uint64_t received=updateBytesReceived.load(),total=updateBytesTotal.load();
+                    const double fraction=total?std::min(1.0,double(received)/double(total)):0.0;
+                    char text[128];
+                    std::snprintf(text,sizeof(text),"Downloading update: %llu%%  (%.1f / %.1f MiB)",
+                                  static_cast<unsigned long long>(fraction*100.0),
+                                  double(received)/(1024.0*1024.0),double(total)/(1024.0*1024.0));
+                    status=text;
+                    drawImage(updateProgressTrack,v,640,430);
+                    updateProgressFill.setScaleX(float(fraction));
+                    drawImage(updateProgressFill,v,330.f+310.f*float(fraction),430);
+                    updateProgressFill.setScaleX(1.f);
+                    break;
+                }
+                case nx::UpdateProgressStage::DownloadingChecksum:
+                    status="Downloading and checking the release checksum...";
+                    break;
+                case nx::UpdateProgressStage::Verifying:
+                    status="Verifying update files before changing the installed menu...";
+                    break;
+                case nx::UpdateProgressStage::Installing:
+                    status="Creating a verified backup and installing.\nKeep the console powered on; this step has no percentage.";
+                    break;
+            }
+            message.setText(status.c_str());
+        }
         drawText(message,v,640,335);
         drawPrompts(v,modalPrompts,1040,480);
     }
@@ -414,12 +452,18 @@ void MainWindow::showUpdateProgress(const std::string &text) {
     requestSound(MenuSound::Click);
     modalPrompts[0].caption->setText("Cancel");modalPrompts[1].caption->setText("Please wait");
 }
+void MainWindow::updateProgressCallback(void *context,nx::UpdateProgressStage stage,uint64_t received,uint64_t total) {
+    auto *window=static_cast<MainWindow *>(context);
+    window->updateBytesReceived.store(received);
+    window->updateBytesTotal.store(total);
+    window->updateProgressStage.store(stage);
+}
 void MainWindow::startUpdateCheck() {
     if(updateBusy) {
         showUpdateProgress("An update operation is still in progress. Wait for it to finish before checking again.");
         return;
     }
-    updateCancel=false;updateBusy=true;
+    updateCancel=false;updateProgressStage=nx::UpdateProgressStage::Checking;updateBusy=true;
     showUpdateProgress("Checking the latest WiiUNX2 release over verified HTTPS.\nPlease wait; keep the console powered on.");
     try {
         updateCheck=std::async(std::launch::async,[this] {return nx::checkLatestUpdate(WIIUNX2_VERSION,&updateCancel);});
@@ -436,14 +480,16 @@ void MainWindow::startUpdateInstall() {
         showMessage("No verified update is ready to install. Check for updates again.");
         return;
     }
-    updateCancel=false;updateBusy=true;
+    updateCancel=false;updateBytesReceived=0;updateBytesTotal=0;
+    updateProgressStage=nx::UpdateProgressStage::Preparing;updateBusy=true;
     showUpdateProgress("Downloading and verifying WiiUNX2 v"+pendingUpdateVersion+".\nThis may take a few minutes. Keep the console powered on; the existing menu is not replaced until verification and backup complete.");
     const auto selection=pendingUpdate;
     const auto version=pendingUpdateVersion;
     const auto targetPath=pendingUpdateTargetPath;
     try {
         updateInstall=std::async(std::launch::async,[this,selection,version,targetPath] {
-            return nx::installUpdate(WIIUNX2_VERSION,version,selection,targetPath,&updateCancel);
+            return nx::installUpdate(WIIUNX2_VERSION,version,selection,targetPath,&updateCancel,
+                                     updateProgressCallback,this);
         });
     } catch(const std::exception &) {
         updateBusy=false;showMessage("The updater could not be started. The installed menu was not changed.");
@@ -801,7 +847,27 @@ void MainWindow::drawAccounts(CVideo *v) {
     const int first=(accountIndex/6)*6;
     for(int i=first;i<std::min(first+6,int(accounts.size()));++i) {
         auto &account=accounts[i];float x=230+(i-first)*164;
-        if(i==accountIndex) drawImage(*accountFocus,v,x,360);
+        if(i==accountIndex) {
+            const float phase=nx::selectionGradientPhase(frame);
+            const size_t current=size_t(phase);
+            const size_t next=(current+1)%tileFocusFrames.size();
+            const float blend=phase-float(current);
+            tileFocusFrames[current]->setScaleX(156.f/288.f);
+            tileFocusFrames[current]->setScaleY(172.f/288.f);
+            tileFocusFrames[current]->setAlpha(1.f);
+            drawImage(*tileFocusFrames[current],v,x,360);
+            tileFocusFrames[current]->setScaleX(1.f);
+            tileFocusFrames[current]->setScaleY(1.f);
+            if(blend>0.f) {
+                tileFocusFrames[next]->setScaleX(156.f/288.f);
+                tileFocusFrames[next]->setScaleY(172.f/288.f);
+                tileFocusFrames[next]->setAlpha(blend);
+                drawImage(*tileFocusFrames[next],v,x,360);
+                tileFocusFrames[next]->setAlpha(1.f);
+                tileFocusFrames[next]->setScaleX(1.f);
+                tileFocusFrames[next]->setScaleY(1.f);
+            }
+        }
         drawImage(*accountCard,v,x,360);
         if(account.image) {
             account.image->setScaleX(88.f/account.data->getWidth());account.image->setScaleY(88.f/account.data->getHeight());

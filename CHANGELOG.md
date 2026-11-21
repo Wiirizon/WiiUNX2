@@ -1,5 +1,21 @@
 # WiiUNX2 changelog
 
+## 0.7.6 — Stable release
+
+- Detect Wii discs reported as `MCP_APP_TYPE_GAME_WII`, show a dedicated disc
+  tile, and request launch through the system's `SYSLaunchTitle` path.
+- Keep the existing Wii U disc launch path unchanged; do not apply Wii U title
+  patches to Wii discs.
+
+### Validation and known limitations
+
+- Added host coverage for Wii-platform samples, platform swaps, and the Wii
+  disc launch-log record. Focused launch-log and version tests pass.
+- Windows Application Control blocked execution of the compiled disc-state
+  test binary here; GitHub Linux validation must confirm the host suite.
+- ODD detection, Wii-mode launch, and return behavior still require Wii U
+  hardware validation. Issue #28 remains open pending those tests.
+
 ## 0.7.5 — Stable release
 
 - Keep update-check and installation progress visible until the background

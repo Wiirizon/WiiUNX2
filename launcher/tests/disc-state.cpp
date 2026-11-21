@@ -1,7 +1,7 @@
 #include "../src/menu/DiscState.h"
 #include <cstdlib>
 #include <iostream>
-using nx::DiscAction;using nx::DiscMonitor;using nx::DiscSample;
+using nx::DiscAction;using nx::DiscMonitor;using nx::DiscPlatform;using nx::DiscSample;
 #define CHECK(x) do { if(!(x)) { std::cerr << "FAILED line " << __LINE__ << ": " #x "\n"; std::exit(1); } } while(0)
 int main() {
     { DiscMonitor m; // insert reported once, repeats are silent
@@ -9,6 +9,14 @@ int main() {
       CHECK(m.update(DiscSample::game(0x500)) ==DiscAction::Inserted);
       CHECK(m.current()==0x500);
       for(int i=0;i<5;++i) CHECK(m.update(DiscSample::game(0x500))==DiscAction::None);
+    }
+    { DiscMonitor m; // Wii-format discs remain distinct while using the shared insert state
+      const auto wii=DiscSample::game(0x0001000000000001ULL,DiscPlatform::Wii);
+      CHECK(wii.kind==DiscSample::Game);
+      CHECK(wii.platform==DiscPlatform::Wii);
+      CHECK(m.update(wii)==DiscAction::Inserted);
+      CHECK(m.current()==wii.titleId);
+      CHECK(m.update(DiscSample::game(wii.titleId))==DiscAction::Changed);
     }
     { DiscMonitor m; // removal needs two consecutive empty samples; one glitch is ignored
       m.update(DiscSample::game(1));

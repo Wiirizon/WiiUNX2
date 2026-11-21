@@ -79,14 +79,14 @@ function RoundedPath($x,$y,$w,$h,$r) {
     $p.CloseFigure();return $p
 }
 function SelectionGradientAsset($name,$phase) {
-    $size=272
+    $size=288
     $scale=3
     $bmp=[Drawing.Bitmap]::new(($size*$scale),($size*$scale))
     $g=[Drawing.Graphics]::FromImage($bmp)
     $g.SmoothingMode=[Drawing.Drawing2D.SmoothingMode]::AntiAlias
     $g.Clear([Drawing.Color]::Transparent)
     $g.ScaleTransform($scale,$scale)
-    $path=RoundedPath 4 4 264 264 20
+    $path=RoundedPath 5 5 278 278 20
     $pen=Pen '#FFFFFF' 4
     $g.DrawPath($pen,$path)
     $pen.Dispose();$path.Dispose();$g.Dispose()

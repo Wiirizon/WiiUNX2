@@ -13,8 +13,8 @@
 
 - Focused host tests for gradient timing and updater core logic pass. The full
   local host runner is blocked by Windows Application Control, and the local
-  Wii U build is blocked by an existing libgui/WUT thread-entry signature
-  mismatch; GitHub build validation is required.
+  Wii U build is blocked by an installed libgui/WUT thread-entry signature
+  mismatch; the [GitHub Wii U build passed](https://github.com/Wiirizon/WiiUNX2/actions/runs/44937910123).
 - Progress rendering, account-highlight appearance, and update installation
   still require Wii U hardware validation.
 

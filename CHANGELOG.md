@@ -1,5 +1,18 @@
 # WiiUNX2 changelog
 
+## 0.7.5 — Stable release
+
+- Keep update-check and installation progress visible until the background
+  operation reports a result. Allow cancellation requests without interrupting
+  protected file operations.
+
+### Validation and known limitations
+
+- Host updater transaction tests and the GitHub trust-bundle test pass.
+- A v0.7.3 console detected v0.7.4 and verified its target and checksum, but
+  remained on v0.7.3 after the install attempt. The stopping stage is unknown;
+  v0.7.5 installation, cancellation, and rollback still require Wii U testing.
+
 ## 0.7.4 — Stable release
 
 - Increase the gap between the selected app's animated gradient border and its

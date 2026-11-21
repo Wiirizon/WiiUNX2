@@ -63,6 +63,7 @@ private:
     void footerAction(size_t action);
     void showOptions();
     void showActionMessage(const std::string &text,const char *action,ModalAction modalAction);
+    void showUpdateProgress(const std::string &text);
     void startUpdateCheck();
     void startUpdateInstall();
     void activate();

@@ -96,7 +96,7 @@ private:
     std::future<nx::UpdateOperationResult> updateInstall;
     std::atomic<bool> updateCancel{false};
     std::atomic<nx::UpdateProgressStage> updateProgressStage{nx::UpdateProgressStage::Checking};
-    std::atomic<uint64_t> updateBytesReceived{0},updateBytesTotal{0};
+    std::atomic<uint32_t> updateBytesReceived{0},updateBytesTotal{0};
     bool updateBusy=false;
     nx::UpdateSelection pendingUpdate;
     std::string pendingUpdateVersion,pendingUpdateTargetPath;

@@ -406,7 +406,7 @@ void MainWindow::draw(CVideo *v) {
                     status="Preparing the verified update download.\nThe installed menu has not been changed.";
                     break;
                 case nx::UpdateProgressStage::DownloadingRpx: {
-                    const uint64_t received=updateBytesReceived.load(),total=updateBytesTotal.load();
+                    const uint32_t received=updateBytesReceived.load(),total=updateBytesTotal.load();
                     const double fraction=total?std::min(1.0,double(received)/double(total)):0.0;
                     char text[128];
                     std::snprintf(text,sizeof(text),"Downloading update: %llu%%  (%.1f / %.1f MiB)",
@@ -454,8 +454,8 @@ void MainWindow::showUpdateProgress(const std::string &text) {
 }
 void MainWindow::updateProgressCallback(void *context,nx::UpdateProgressStage stage,uint64_t received,uint64_t total) {
     auto *window=static_cast<MainWindow *>(context);
-    window->updateBytesReceived.store(received);
-    window->updateBytesTotal.store(total);
+    window->updateBytesReceived.store(static_cast<uint32_t>(received));
+    window->updateBytesTotal.store(static_cast<uint32_t>(total));
     window->updateProgressStage.store(stage);
 }
 void MainWindow::startUpdateCheck() {

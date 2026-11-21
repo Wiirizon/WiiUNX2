@@ -2,13 +2,15 @@
 #pragma once
 #include <cstdint>
 namespace nx {
+enum class DiscPlatform { WiiU, Wii };
 struct DiscSample {
     enum Kind { Error, Empty, Game, Other };
     Kind kind=Error;
     uint64_t titleId=0;
+    DiscPlatform platform=DiscPlatform::WiiU;
     static DiscSample error() { return {Error,0}; }
     static DiscSample empty() { return {Empty,0}; }
-    static DiscSample game(uint64_t id) { return {Game,id}; }
+    static DiscSample game(uint64_t id,DiscPlatform platform=DiscPlatform::WiiU) { return {Game,id,platform}; }
     static DiscSample other() { return {Other,0}; }
 };
 enum class DiscAction { None, Inserted, Changed, Removed, Unsupported };
@@ -24,7 +26,7 @@ public:
         const bool invalid=sample.kind==DiscSample::Error || (sample.kind==DiscSample::Game && sample.titleId==0);
         if(invalid) { if(errors<1000) ++errors; return DiscAction::None; }
         errors=0;
-        if(sample.kind==DiscSample::Game) { unsupportedSeen=false; return seeGame(sample.titleId); }
+        if(sample.kind==DiscSample::Game) { unsupportedSeen=false; return seeGame(sample.titleId,sample.platform); }
         if(sample.kind==DiscSample::Empty) unsupportedSeen=false;
         return seeNonGame(sample.kind==DiscSample::Other);
     }
@@ -36,11 +38,11 @@ public:
         return delay>maxDelayMs?maxDelayMs:delay;
     }
 private:
-    DiscAction seeGame(uint64_t gameId) {
+    DiscAction seeGame(uint64_t gameId,DiscPlatform gamePlatform) {
         misses=0;
-        if(gameId==id) return DiscAction::None;
+        if(gameId==id && gamePlatform==platform) return DiscAction::None;
         const DiscAction action=id==0?DiscAction::Inserted:DiscAction::Changed;
-        id=gameId;
+        id=gameId;platform=gamePlatform;
         return action;
     }
     // Empty and Other samples count toward removal of a held game. With no game held, an Other sample
@@ -56,6 +58,7 @@ private:
         return DiscAction::Unsupported;
     }
     uint64_t id=0;
+    DiscPlatform platform=DiscPlatform::WiiU;
     unsigned misses=0;
     unsigned errors=0;
     bool unsupportedSeen=false;

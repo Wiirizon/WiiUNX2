@@ -39,14 +39,21 @@ static const char *dockFiles[] = {"nxFriends.png", "nxBrowser.png", "nxDownloads
 static const char *keys=nx::keyboardCharacters();
 static bool isMenu(uint64_t id) { return (id >> 32) == 0x00050010 && ((id & 0xffffff00) == 0x10040000 || (id & 0xffffff00) == 0x10040100 || (id & 0xffffff00) == 0x10040200); }
 static constexpr uint64_t discTileId=0xfffffffffffffffeULL;
-static nx::DiscSample readDisc(MCPTitleListType &title,uint32_t *otherType=nullptr) {
+static nx::DiscSample readDisc(MCPTitleListType &title,uint32_t *appTypeOut=nullptr) {
     alignas(64) MCPTitleListType entries[4]{};uint32_t count=0;
     int handle=MCP_Open();if(handle<0) return nx::DiscSample::error();
     auto result=MCP_TitleListByDeviceType(handle,MCP_DEVICE_TYPE_ODD,&count,entries,sizeof(entries));
     MCP_Close(handle);
     if(result<0 || count>4) return nx::DiscSample::error();
-    for(uint32_t i=0;i<count;++i) if(entries[i].appType==MCP_APP_TYPE_GAME) {title=entries[i];return nx::DiscSample::game(entries[i].titleId);}
-    if(count>0 && otherType) *otherType=uint32_t(entries[0].appType);
+    for(uint32_t i=0;i<count;++i) if(entries[i].appType==MCP_APP_TYPE_GAME) {
+        title=entries[i];if(appTypeOut) *appTypeOut=uint32_t(entries[i].appType);
+        return nx::DiscSample::game(entries[i].titleId);
+    }
+    for(uint32_t i=0;i<count;++i) if(entries[i].appType==MCP_APP_TYPE_GAME_WII) {
+        title=entries[i];if(appTypeOut) *appTypeOut=uint32_t(entries[i].appType);
+        return nx::DiscSample::game(entries[i].titleId,nx::DiscPlatform::Wii);
+    }
+    if(count>0 && appTypeOut) *appTypeOut=uint32_t(entries[0].appType);
     return count>0?nx::DiscSample::other():nx::DiscSample::empty();
 }
 
@@ -234,28 +241,36 @@ void MainWindow::process() {
             bool otherLogged=false;
             while(!stopLoader) {
                 MCPTitleListType disc{};
-                uint32_t otherType=0;
-                const auto sample=readDisc(disc,&otherType);
-                // Log an unsupported disc's app type once per change, so a Wii disc can be identified on hardware.
+                uint32_t discAppType=0;
+                const auto sample=readDisc(disc,&discAppType);
                 const bool unsupported=sample.kind==nx::DiscSample::Other;
-                if(unsupported && (!otherLogged || otherType!=lastOtherType)) DEBUG_FUNCTION_LINE("Unsupported disc entry, app type 0x%08X",unsigned(otherType));
-                otherLogged=unsupported;
-                lastOtherType=otherType;
+                const bool reportDiscType=unsupported||sample.platform==nx::DiscPlatform::Wii;
+                if(reportDiscType && (!otherLogged || discAppType!=lastOtherType)) {
+                    if(sample.platform==nx::DiscPlatform::Wii) DEBUG_FUNCTION_LINE("Wii disc ODD app type 0x%08X",unsigned(discAppType));
+                    else DEBUG_FUNCTION_LINE("Unsupported disc entry, app type 0x%08X",unsigned(discAppType));
+                }
+                if(sample.kind!=nx::DiscSample::Error) {
+                    otherLogged=reportDiscType;lastOtherType=reportDiscType?discAppType:0;
+                }
                 const auto action=monitor.update(sample);
                 const uint64_t current=monitor.current();
                 // A pending notice is dropped once the disc is gone or replaced by a game; an Error sample keeps it.
                 if(sample.kind==nx::DiscSample::Empty || sample.kind==nx::DiscSample::Game) discUnsupportedNotice=false;
                 if(action==nx::DiscAction::Unsupported) discUnsupportedNotice=true;
                 else if(action!=nx::DiscAction::None) {
-                    gameInfo update{};update.titleId=discTileId;update.appType=MCP_APP_TYPE_GAME;update.launchId=current;
+                    gameInfo update{};update.titleId=discTileId;update.appType=disc.appType;update.launchId=current;
                     if(current) {
-                        update.name="Wii U Disc";update.gamePath=nx::bounded(disc.path,sizeof(disc.path));
-                        uint8_t *xml=nullptr;uint32_t size=0;
-                        if(FSUtils::LoadFileToMem(("fs:"+update.gamePath+"/meta/meta.xml").c_str(),&xml,&size,1024*1024)>0) {
-                            auto name=nx::xmlTitle(std::string(reinterpret_cast<char*>(xml),size));
-                            if(!name.empty()) update.name=name+" (Disc)";
+                        if(sample.platform==nx::DiscPlatform::Wii) {
+                            update.name="Wii Game Disc";
+                        } else {
+                            update.name="Wii U Disc";update.gamePath=nx::bounded(disc.path,sizeof(disc.path));
+                            uint8_t *xml=nullptr;uint32_t size=0;
+                            if(FSUtils::LoadFileToMem(("fs:"+update.gamePath+"/meta/meta.xml").c_str(),&xml,&size,1024*1024)>0) {
+                                auto name=nx::xmlTitle(std::string(reinterpret_cast<char*>(xml),size));
+                                if(!name.empty()) update.name=name+" (Disc)";
+                            }
+                            free(xml);
                         }
-                        free(xml);
                     }
                     std::lock_guard<std::mutex> guard(pendingMutex);pending.push_back(update);
                 }
@@ -276,7 +291,7 @@ void MainWindow::process() {
     if(viewDirty) rebuildView();
     if(launching && frame-launchFrame>600) { launching=false; showMessage("The launch did not complete. Try again or restart WiiUNX2."); }
     // Show the Wii disc notice once, and only when no other message or launch is active; otherwise keep it pending.
-    if(!modal && !launching && discUnsupportedNotice.exchange(false)) showMessage("This disc cannot be launched from WiiUNX2. Wii discs are not supported yet.");
+    if(!modal && !launching && discUnsupportedNotice.exchange(false)) showMessage("This disc type cannot be launched from WiiUNX2.");
     // Keep the selection near the second card, with the next card peeking at the edge.
     float target=dragging?scroll:nx::scrollTarget(selected);
     scroll+=(target-scroll)*.22f;
@@ -610,8 +625,15 @@ void MainWindow::launch(uint64_t id) {
         markPlayed(id);launching=true;launchFrame=frame;return;
     }
     if(id==discTileId) {
-        MCPTitleListType disc{};
-        if(readDisc(disc).kind!=nx::DiscSample::Game) {showMessage("Insert a readable Wii U game disc and try again.");return;}
+        MCPTitleListType disc{};const auto sample=readDisc(disc);
+        if(sample.kind!=nx::DiscSample::Game) {showMessage("Insert a supported, readable game disc and try again.");return;}
+        if(sample.platform==nx::DiscPlatform::Wii) {
+            markPlayed(disc.titleId);launching=true;launchFrame=frame;
+            recordLaunch("wii-disc",disc.titleId,disc.appType,nx::kLaunchNotCalled,disc.path);
+            SYSLaunchTitle(disc.titleId);
+            recordLaunch("wii-disc-returned",disc.titleId,disc.appType,nx::kLaunchNotCalled,disc.path);
+            return;
+        }
         int32_t patchResult=ACPAssignTitlePatch(&disc);markPlayed(disc.titleId);launching=true;launchFrame=frame;
         recordLaunch("disc",disc.titleId,disc.appType,patchResult,disc.path);
         _SYSLaunchTitleByPathFromLauncher(disc.path,0);return;

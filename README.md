@@ -42,6 +42,8 @@ The menu's normal path keeps GPU resources on the render thread and performs
 metadata work on workers. Native play history is read-only. Recent homebrew
 launch dates are stored locally on SD and never uploaded. Custom diagnostics
 are disabled by default; see [SECURITY.md](SECURITY.md).
+If no default Wii U account is configured, WiiUNX2 asks who is using the
+console at startup and remembers the choice for the rest of that system boot.
 
 The on-screen search keyboard uses a QWERTY letter layout. The selected
 software tile has a brightness pulse on its gradient outline. Mii avatars sit
@@ -128,8 +130,12 @@ GitHub releases provide `men.rpx` and `men.rpx.sha256` as direct downloads.
 
 This method requires Aroma's RPXLoadingModule. The linked plugin is a
 community RPX-compatible fork of [ThemeCafe's StyleMiiU-Plugin](https://github.com/ThemeCafe/StyleMiiU-Plugin).
-Avoid competing menu-patching plugins during testing and keep a recovery path.
-Choose either this route or the direct Aroma `men.rpx` install.
+It launches WiiUNX2 as homebrew through a wrapper rather than as the Wii U
+Menu process. Some titles have been reported to hang in this route from both
+WiiUNX2 and [Launchiine](https://github.com/vbarros22/launchiine); the same
+titles reportedly work with the direct Aroma `men.rpx` install. The cause is
+not yet confirmed, so use the direct install for affected titles and keep a
+recovery path. Avoid competing menu-patching plugins during testing.
 
 `Update-SD.ps1` also updates the normal `aroma` environment and backs up an
 existing `men.rpx` before replacing it. Never replace internal system files.

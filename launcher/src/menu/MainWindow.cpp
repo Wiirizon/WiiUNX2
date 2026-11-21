@@ -1,6 +1,7 @@
 // WiiUNX2, GPL-3.0-or-later. Original menu implementation for launchiine.
 #include "MainWindow.h"
 #include "HomeGeometry.h"
+#include "AccountPrompt.h"
 #include "gui/SelectionGradient.h"
 #include "IconPlan.h"
 #include "Library.h"
@@ -30,6 +31,7 @@
 #include <sysapp/launch.h>
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <cmath>
 #include "common/common.h"
 extern "C" int32_t ACPCheckTitleLaunchByTitleListTypeEx(MCPTitleListType*,uint32_t);
@@ -37,8 +39,30 @@ extern "C" int32_t ACPCheckTitleLaunchByTitleListTypeEx(MCPTitleListType*,uint32
 static const char *dockNames[] = {"Friend List", "Internet Browser", "Download Management", "Nintendo eShop", "Mii Maker", "Data Management", "Controllers", "System Settings", "Power"};
 static const char *dockFiles[] = {"nxFriends.png", "nxBrowser.png", "nxDownloads.png", "nxShop.png", "nxMii.png", "nxData.png", "nxControllers.png", "nxSettings.png", "nxPower.png"};
 static const char *keys=nx::keyboardCharacters();
+static constexpr const char *accountChoicePath="fs:/vol/external01/wiiu/wiiunx2-account-chosen.txt";
 static bool isMenu(uint64_t id) { return (id >> 32) == 0x00050010 && ((id & 0xffffff00) == 0x10040000 || (id & 0xffffff00) == 0x10040100 || (id & 0xffffff00) == 0x10040200); }
 static constexpr uint64_t discTileId=0xfffffffffffffffeULL;
+static uint64_t bootTimeTicks() {
+    return static_cast<uint64_t>(OSGetTime()-OSGetSystemTime());
+}
+static bool accountWasChosenThisBoot() {
+    uint8_t *buffer=nullptr;uint32_t size=0;
+    if(FSUtils::LoadFileToMem(accountChoicePath,&buffer,&size,64)<=0 || !buffer) return false;
+    std::string text(reinterpret_cast<char *>(buffer),size);free(buffer);
+    char *end=nullptr;
+    const unsigned long long saved=std::strtoull(text.c_str(),&end,16);
+    if(end==text.c_str()) return false;
+    while(*end=='\r'||*end=='\n'||*end==' '||*end=='\t') ++end;
+    return *end=='\0' && nx::accountChoiceMatchesBoot(saved,bootTimeTicks(),OSSecondsToTicks(5));
+}
+static void rememberAccountChoiceThisBoot() {
+    FSUtils::CreateSubfolder("fs:/vol/external01/wiiu");
+    char text[32];const int length=std::snprintf(text,sizeof(text),"%016llX\n",
+                                                static_cast<unsigned long long>(bootTimeTicks()));
+    if(length<=0 || length>=int(sizeof(text)) ||
+       FSUtils::saveBufferToFile(accountChoicePath,text,uint32_t(length))!=length)
+        DEBUG_FUNCTION_LINE("Could not save the boot account-choice marker");
+}
 static nx::DiscSample readDisc(MCPTitleListType &title,uint32_t *appTypeOut=nullptr) {
     alignas(64) MCPTitleListType entries[4]{};uint32_t count=0;
     int handle=MCP_Open();if(handle<0) return nx::DiscSample::error();
@@ -117,14 +141,17 @@ MainWindow::MainWindow(int32_t w, int32_t h, MenuMusic *sound)
     searchQuery.setMaxWidth(950,GuiText::DOTTED);
     actReady=nn::act::Initialize().IsSuccess();
     refreshAccounts();
+    if(actReady && !accounts.empty() &&
+       nx::shouldPromptForAccount(nn::act::GetDefaultAccount(),accountWasChosenThisBoot())) {
+        accountPromptRequired=true;accountsOpen=true;
+        accountPrompts[2].caption->setText("Use current");
+    }
 }
 MainWindow::~MainWindow() {
     updateCancel=true;
     if(updateCheck.valid()) updateCheck.wait();
     if(updateInstall.valid()) updateInstall.wait();
-    stopLoader=true;
-    if(loader.joinable()) loader.join();
-    if(iconRead.valid()) iconRead.wait();
+    stopTitleWorkers();
     accounts.clear();
     if(actReady) nn::act::Finalize();
     gameList.titleAdded.disconnect(this);
@@ -209,7 +236,7 @@ void MainWindow::process() {
     ++frame;
     if(shutdownFrame && frame>=shutdownFrame) OSShutdown();
     if(frame==1) heartbeatTicks=OSGetSystemTime();
-    if(!listStarted && frame>=2) {
+    if(!listStarted && frame>=2 && !stopLoader) {
         listStarted=true;focusRow=restore.row;dockIndex=restore.dock;sortMode=restore.sort;query=restore.query;
         // Worker touches only CPU metadata; GUI objects and textures stay on this thread.
         loader=std::thread([this] {
@@ -559,7 +586,11 @@ void MainWindow::handleInput(GuiController *c) {
     if(!accountsOpen && (pressed&T::BUTTON_Y)) {searchOpen=true;requestSound(MenuSound::Click);searchQuery.setText(query.empty()?"Type a title...":query.c_str());return;}
     if(!accountsOpen && (pressed&T::BUTTON_MINUS)) {sortMode=(sortMode+1)%4;requestSound(MenuSound::Click);rebuildView();return;}
     if(accountsOpen) {
-        if(pressed&T::BUTTON_B) { accountsOpen=false;requestSound(MenuSound::Back); return; }
+        if(pressed&T::BUTTON_B) {
+            if(accountPromptRequired) continueWithActiveAccount();
+            else { accountsOpen=false;requestSound(MenuSound::Back); }
+            return;
+        }
         if(pressed&(T::BUTTON_LEFT|T::STICK_L_LEFT)) accountIndex=nx::moveSelection(accountIndex,-1,accounts.size());
         if(pressed&(T::BUTTON_RIGHT|T::STICK_L_RIGHT)) accountIndex=nx::moveSelection(accountIndex,1,accounts.size());
         if(pressed&T::BUTTON_L) accountIndex=nx::moveSelection(accountIndex,-6,accounts.size());
@@ -569,7 +600,7 @@ void MainWindow::handleInput(GuiController *c) {
             float x=c->data.x+640,y=360-c->data.y;
             int i=nx::hitAccount(x,y,accountIndex/6,accounts.size());
             if(i>=0) { if(i==accountIndex) selectAccount(); else accountIndex=i; }
-            else {int action=hitPrompt(accountPrompts,x,y,516);if(action==0) accountIndex=nx::moveSelection(accountIndex,-6,accounts.size());else if(action==1) accountIndex=nx::moveSelection(accountIndex,6,accounts.size());else if(action==2){accountsOpen=false;requestSound(MenuSound::Back);}else if(action==3) selectAccount();}
+            else {int action=hitPrompt(accountPrompts,x,y,516);if(action==0) accountIndex=nx::moveSelection(accountIndex,-6,accounts.size());else if(action==1) accountIndex=nx::moveSelection(accountIndex,6,accounts.size());else if(action==2){if(accountPromptRequired) continueWithActiveAccount();else {accountsOpen=false;requestSound(MenuSound::Back);}}else if(action==3) selectAccount();}
         } else if(pressed&T::BUTTON_A) selectAccount();
         return;
     }
@@ -668,6 +699,7 @@ void MainWindow::launch(uint64_t id) {
     if(nx::isHomebrew(id)) {
         auto tile=std::find_if(tiles.begin(),tiles.end(),[id](const auto &t){return t.id==id;});
         if(tile==tiles.end()) return;
+        stopTitleWorkers();
         static bool ready=false;
         auto result=ready?RPX_LOADER_RESULT_SUCCESS:RPXLoader_InitLibrary();
         if(result==RPX_LOADER_RESULT_SUCCESS) {ready=true;result=RPXLoader_LaunchHomebrew(tile->path.c_str());}
@@ -680,12 +712,14 @@ void MainWindow::launch(uint64_t id) {
         if(sample.kind!=nx::DiscSample::Game) {showMessage("Insert a supported, readable game disc and try again.");return;}
         if(sample.platform==nx::DiscPlatform::Wii) {
             markPlayed(disc.titleId);launching=true;launchFrame=frame;
+            stopTitleWorkers();
             recordLaunch("wii-disc",disc.titleId,disc.appType,nx::kLaunchNotCalled,disc.path);
             SYSLaunchTitle(disc.titleId);
             recordLaunch("wii-disc-returned",disc.titleId,disc.appType,nx::kLaunchNotCalled,disc.path);
             return;
         }
         int32_t patchResult=ACPAssignTitlePatch(&disc);markPlayed(disc.titleId);launching=true;launchFrame=frame;
+        stopTitleWorkers();
         recordLaunch("disc",disc.titleId,disc.appType,patchResult,disc.path);
         _SYSLaunchTitleByPathFromLauncher(disc.path,0);return;
     }
@@ -698,6 +732,7 @@ void MainWindow::launch(uint64_t id) {
         DEBUG_FUNCTION_LINE("Aroma prepare %016llX result %d",(unsigned long long)id,result);
         if(result<0) {showMessage("Homebrew could not prepare. Enable Aroma's Homebrew on Menu plugin.");return;}
         markPlayed(id);launching=true;launchFrame=frame;
+        stopTitleWorkers();
         recordLaunch("homebrew-custom",id,homebrew.appType,nx::kLaunchNotCalled,homebrew.path);
         _SYSLaunchTitleByPathFromLauncher(homebrew.path,0);return;
     }
@@ -725,8 +760,9 @@ void MainWindow::launch(uint64_t id) {
         markPlayed(id);
         launching=true;
         launchFrame=frame;
+        stopTitleWorkers();
         recordLaunch("regular",id,info.appType,patchResult,info.path);
-        SYSLaunchTitle(id);
+        _SYSLaunchTitleWithStdArgsInNoSplash(id,nullptr);
         recordLaunch("regular-returned",id,info.appType,patchResult,info.path);
         return;
     }
@@ -822,13 +858,17 @@ void MainWindow::refreshAccounts() {
 }
 void MainWindow::openAccounts() {
     if(!actReady || accounts.empty()) {showMessage("No Wii U users could be read. Open the original Wii U Menu to configure an account.");return;}
+    accountPromptRequired=false;accountPrompts[2].caption->setText("Back");
     accountsOpen=true;requestSound(MenuSound::Click);
 }
 void MainWindow::selectAccount() {
     requestSound(MenuSound::Click);
     if(accounts.empty()) return;
     auto &account=accounts[accountIndex];
-    if(account.slot==activeSlot) {accountsOpen=false;return;}
+    if(account.slot==activeSlot) {
+        rememberAccountChoiceThisBoot();accountPromptRequired=false;
+        accountPrompts[2].caption->setText("Back");accountsOpen=false;return;
+    }
     // Same load operation used by Aroma's AutobootModule. Let ACT enforce sign-in requirements.
     auto result=nn::act::LoadConsoleAccount(account.slot,0,nullptr,false);
     uint8_t actual=nn::act::GetSlotNo();
@@ -838,8 +878,26 @@ void MainWindow::selectAccount() {
         return;
     }
     activeSlot=actual;profileName.setText(account.name.c_str());accountsOpen=false;focusRow=2;
+    rememberAccountChoiceThisBoot();accountPromptRequired=false;accountPrompts[2].caption->setText("Back");
     recent.clear();localDays.clear();nativeDays.clear();recentLoaded=false;viewDirty=true;
     DEBUG_FUNCTION_LINE("Active account slot changed to %u",unsigned(activeSlot));
+}
+void MainWindow::continueWithActiveAccount() {
+    auto current=std::find_if(accounts.begin(),accounts.end(),[this](const Account &account) {
+        return account.slot==activeSlot;
+    });
+    if(current==accounts.end()) {
+        showMessage("The active Wii U user could not be read. Select an available account.");
+        return;
+    }
+    accountIndex=int(current-accounts.begin());
+    selectAccount();
+}
+void MainWindow::stopTitleWorkers() {
+    stopLoader=true;
+    if(loader.joinable()) loader.join();
+    if(iconRead.valid()) iconRead.wait();
+    if(historyRead.valid()) historyRead.wait();
 }
 void MainWindow::drawAccounts(CVideo *v) {
     drawImage(modalShade,v,640,360);drawImage(*accountPanel,v,640,360);

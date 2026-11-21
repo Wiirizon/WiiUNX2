@@ -197,7 +197,7 @@ void MainWindow::process() {
             if(result.success&&result.available) {
                 pendingUpdate=std::move(result.selection);pendingUpdateVersion=std::move(result.version);
                 pendingUpdateTargetPath=std::move(result.targetPath);
-                showActionMessage("WiiUNX2 v"+pendingUpdateVersion+" is available.\nThe RPX and its checksum are verified over HTTPS. This project does not sign releases.\nInstall target: "+result.targetDisplayPath+"\nA verified backup will be kept beside it.",
+                showActionMessage("WiiUNX2 v"+pendingUpdateVersion+" is available.\nThe RPX and its checksum are verified over HTTPS. This project does not sign releases.\nInstall target: "+result.targetDisplayPath+"\nA verified backup will be kept beside it.\nKeep the console powered on and do not remove the SD card during installation.",
                                   "Install",ModalAction::InstallUpdate);
             } else showMessage(result.message);
         } catch(const std::exception &) {
@@ -453,7 +453,7 @@ void MainWindow::draw(CVideo *v) {
                     status="Verifying update files before changing the installed menu...";
                     break;
                 case nx::UpdateProgressStage::Installing:
-                    status="Creating a verified backup and installing.\nKeep the console powered on; this step has no percentage.";
+                    status="Creating a verified backup and installing.\nDo not power off or remove the SD card.\nThis step has no percentage.";
                     break;
             }
             message.setText(status.c_str());

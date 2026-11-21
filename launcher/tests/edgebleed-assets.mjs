@@ -110,7 +110,7 @@ let changed=0;
 for(let frame=0;frame<8;frame++) {
   const name=`nxTileFocus${frame}.png`;
   const {width,height,rgba}=decodeRgba(path.join(root,'launcher/data/images',name));
-  assert.deepEqual([width,height],[272,272],`${name}: unexpected frame size`);
+  assert.deepEqual([width,height],[288,288],`${name}: unexpected frame size`);
   let left=width,top=height,right=-1,bottom=-1;
   for(let y=0;y<height;y++) {
     for(let x=0;x<width;x++) {
@@ -118,8 +118,13 @@ for(let frame=0;frame<8;frame++) {
       left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x);bottom=Math.max(bottom,y);
     }
   }
-  assert.ok(left<=3&&top<=3&&right>=width-4&&bottom>=height-4,
-            `${name}: selection outline must sit outside the 256px tile`);
+  assert.ok(left>=2&&top>=2&&right<=width-3&&bottom<=height-3,
+            `${name}: selection outline must fit within the 272px tile spacing`);
+  const center=height/2,iconStart=(width-256)/2,iconEnd=iconStart+256;
+  for(let x=8;x<iconStart;x++) assert.equal(rgba[(center*width+x)*4+3],0,`${name}: missing left-side icon clearance`);
+  for(let x=iconEnd;x<width-8;x++) assert.equal(rgba[(center*width+x)*4+3],0,`${name}: missing right-side icon clearance`);
+  for(let y=8;y<iconStart;y++) assert.equal(rgba[(y*width+center)*4+3],0,`${name}: missing top-side icon clearance`);
+  for(let y=iconEnd;y<height-8;y++) assert.equal(rgba[(y*width+center)*4+3],0,`${name}: missing bottom-side icon clearance`);
 }
 for(const name of assets) {
   const {width,height,rgba}=decodeRgba(path.join(root,'launcher/data/images',name));

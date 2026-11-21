@@ -5,7 +5,7 @@ horizontal software row, touch navigation, search, sorting, user selection,
 disc discovery and homebrew launching. It is not affiliated with, endorsed by
 or sponsored by Nintendo.
 
-The v0.7.2 release does not bundle Nintendo firmware, game files,
+The v0.7.4 release does not bundle Nintendo firmware, game files,
 console system files, or recorded Nintendo audio. Its optional UI cues are
 original synthetic sounds generated without reference recordings. Game icons
 are read from software installed on the user's console and are not distributed.

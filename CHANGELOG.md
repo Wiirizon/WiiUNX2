@@ -1,5 +1,11 @@
 # WiiUNX2 changelog
 
+## 0.7.10 — Stable release
+
+- Document the StyleMiiU suspension-overlay path label. The RPXLoadingModule
+  API used by WiiUNX2 exposes no supported display-name override, so the
+  executable path remains unchanged for correct updater target detection.
+
 ## 0.7.9 — Stable release
 
 - Support SD filesystems that reject replacing an existing RPX with `rename()`.

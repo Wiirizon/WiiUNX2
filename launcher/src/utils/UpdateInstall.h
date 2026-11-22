@@ -2,11 +2,38 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <vector>
+#include "UpdateCore.h"
 
 namespace nx {
 enum class UpdateReplaceResult {
     InvalidState,BackupFailed,BackupPublishFailed,ReplaceFailed,Installed,Restored,RecoveryRequired
 };
+
+inline bool isUpdaterBackupLeaf(const std::string &name) {
+    static const std::string prefix="men.rpx.backup-";
+    if(name.size()<=prefix.size()||name.size()>prefix.size()+16||
+       name.compare(0,prefix.size(),prefix)!=0) return false;
+    for(size_t i=prefix.size();i<name.size();++i) {
+        const char c=name[i];
+        if(!((c>='0'&&c<='9')||(c>='a'&&c<='f'))) return false;
+    }
+    return true;
+}
+
+template<typename FileOps>
+bool retainLatestUpdaterBackup(FileOps &files,const std::string &directory,const std::string &keepPath) {
+    std::vector<std::string> entries;
+    if(!files.listDirectory(directory,entries)) return false;
+    bool ok=true;
+    for(const auto &leaf:entries) {
+        if(!isUpdaterBackupLeaf(leaf)) continue;
+        const std::string path=directory+"/"+leaf;
+        if(path==keepPath||!files.isRegular(path)) continue;
+        if(!files.removeFile(path)) ok=false;
+    }
+    return ok;
+}
 
 // FileOps copies must be complete, and atomicReplace must leave the target intact on failure.
 // A verified backup is published before the non-overwriting rename fallback is attempted.

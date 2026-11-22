@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <dirent.h>
 #include <exception>
 #include <fcntl.h>
 #include <limits>
@@ -22,6 +23,7 @@
 #include <string>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <vector>
 
 namespace nx {
 namespace {
@@ -345,7 +347,18 @@ struct SdUpdateFiles {
     bool atomicReplace(const std::string &source,const std::string &destination) const {
         return rename(source.c_str(),destination.c_str())==0;
     }
-    void removeFile(const std::string &path) const {unlink(path.c_str());}
+    bool removeFile(const std::string &path) const {return unlink(path.c_str())==0;}
+    bool listDirectory(const std::string &path,std::vector<std::string> &entries) const {
+        DIR *dir=opendir(path.c_str());
+        if(!dir) return false;
+        bool ok=true;
+        while(auto *entry=readdir(dir)) {
+            if(entries.size()>=4096) {ok=false;break;}
+            entries.emplace_back(entry->d_name);
+        }
+        if(closedir(dir)!=0) ok=false;
+        return ok;
+    }
     bool hashMatches(const std::string &path,uint64_t size,const std::string &hash) const {
         return hashRegularFile(path,size,hash);
     }
@@ -519,6 +532,9 @@ UpdateOperationResult installSelected(const std::string &version,const UpdateSel
     if(progress) progress(progressContext,UpdateProgressStage::Installing,0,0);
     const UpdateReplaceResult replacement=replaceWithVerifiedBackup(files,target.path,stagePath,backupPath,
         backupPart,restorePart,displacedPart,selection.rpx.size,apiRpxDigest,oldRpxSize,oldRpxHash);
+    const bool backupPublished=replacement!=UpdateReplaceResult::InvalidState&&
+        replacement!=UpdateReplaceResult::BackupFailed&&replacement!=UpdateReplaceResult::BackupPublishFailed;
+    const bool oldBackupsPruned=!backupPublished||retainLatestUpdaterBackup(files,targetDirectory,backupPath);
     if(replacement!=UpdateReplaceResult::Installed) {
         cleanup();
         if(replacement==UpdateReplaceResult::BackupFailed)
@@ -532,11 +548,14 @@ UpdateOperationResult installSelected(const std::string &version,const UpdateSel
         else if(replacement==UpdateReplaceResult::RecoveryRequired)
             result.message="The update could not be completed or rolled back. Power off and manually restore the verified backup at "+target.displayPath+".backup-"+stamp+".";
         else result.message="The update transaction found an unexpected path state; the installed menu was not intentionally replaced.";
+        if(backupPublished&&!oldBackupsPruned)
+            result.message+=" Older in-app backups could not all be removed; the latest verified backup remains beside the RPX.";
         return result;
     }
     cleanup();
     result.success=true;
     result.message="WiiUNX2 v"+version+" was installed at "+target.displayPath+". Restart the console to load it. The previous menu is preserved beside it as men.rpx.backup-"+stamp+".";
+    if(!oldBackupsPruned) result.message+=" Older in-app backups could not all be removed.";
     return result;
 }
 }  // namespace

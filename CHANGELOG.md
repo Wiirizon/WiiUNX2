@@ -8,12 +8,11 @@
 
 ### Validation and known limitations
 
-- Focused updater test sources passed C++ syntax checks, but Windows
-  Application Control blocked execution of the generated test binary. The
-  full local host runner stopped for the same reason; focused version and
-  packaging tests passed.
-- The new backup-retention and ODD diagnostics have not been tested on Wii U
-  hardware. The release build and Linux host suite must pass before publishing.
+- The [GitHub Wii U cross-build](https://github.com/Wiirizon/WiiUNX2/actions/runs/44969720030)
+  and [Ubuntu source/host validation](https://github.com/Wiirizon/WiiUNX2/actions/runs/44969726410)
+  passed, including the host regression suite and source archive check.
+- Backup rotation and ODD diagnostics have not yet been tested on Wii U
+  hardware; this release is intended for that console test.
 - The user reports all tested titles launch through the StyleMiiU RPX fork;
   Wii-format discs still do not appear. Use the opt-in ODD diagnostics to
   distinguish an empty result from an MCP query error.

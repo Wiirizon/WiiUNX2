@@ -64,11 +64,38 @@ static void rememberAccountChoiceThisBoot() {
         DEBUG_FUNCTION_LINE("Could not save the boot account-choice marker");
 }
 static nx::DiscSample readDisc(MCPTitleListType &title,uint32_t *appTypeOut=nullptr) {
+    static int lastOpenError=0,lastListError=0;
+    static bool openErrorLogged=false,listErrorLogged=false,emptyLogged=false,overflowLogged=false;
     alignas(64) MCPTitleListType entries[4]{};uint32_t count=0;
-    int handle=MCP_Open();if(handle<0) return nx::DiscSample::error();
+    int handle=MCP_Open();
+    if(handle<0) {
+        if(!openErrorLogged||handle!=lastOpenError) DEBUG_FUNCTION_LINE("Disc MCP_Open failed: %d",handle);
+        openErrorLogged=true;lastOpenError=handle;
+        listErrorLogged=false;emptyLogged=false;overflowLogged=false;
+        return nx::DiscSample::error();
+    }
+    openErrorLogged=false;
     auto result=MCP_TitleListByDeviceType(handle,MCP_DEVICE_TYPE_ODD,&count,entries,sizeof(entries));
     MCP_Close(handle);
-    if(result<0 || count>4) return nx::DiscSample::error();
+    if(result<0) {
+        if(!listErrorLogged||result!=lastListError) DEBUG_FUNCTION_LINE("Disc ODD query failed: %d",int(result));
+        listErrorLogged=true;lastListError=result;
+        emptyLogged=false;overflowLogged=false;
+        return nx::DiscSample::error();
+    }
+    listErrorLogged=false;
+    if(count>4) {
+        if(!overflowLogged) DEBUG_FUNCTION_LINE("Disc ODD query returned too many entries: %u",unsigned(count));
+        overflowLogged=true;
+        return nx::DiscSample::error();
+    }
+    overflowLogged=false;
+    if(count==0) {
+        if(!emptyLogged) DEBUG_FUNCTION_LINE("Disc ODD query returned no entries");
+        emptyLogged=true;
+        return nx::DiscSample::empty();
+    }
+    emptyLogged=false;
     for(uint32_t i=0;i<count;++i) if(entries[i].appType==MCP_APP_TYPE_GAME) {
         title=entries[i];if(appTypeOut) *appTypeOut=uint32_t(entries[i].appType);
         return nx::DiscSample::game(entries[i].titleId);
@@ -78,7 +105,7 @@ static nx::DiscSample readDisc(MCPTitleListType &title,uint32_t *appTypeOut=null
         return nx::DiscSample::game(entries[i].titleId,nx::DiscPlatform::Wii);
     }
     if(count>0 && appTypeOut) *appTypeOut=uint32_t(entries[0].appType);
-    return count>0?nx::DiscSample::other():nx::DiscSample::empty();
+    return nx::DiscSample::other();
 }
 
 MainWindow::MainWindow(int32_t w, int32_t h, MenuMusic *sound)

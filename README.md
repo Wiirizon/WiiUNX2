@@ -45,6 +45,12 @@ are disabled by default; see [SECURITY.md](SECURITY.md).
 If no default Wii U account is configured, WiiUNX2 asks who is using the
 console at startup and remembers the choice for the rest of that system boot.
 
+WiiUNX2 still enumerates installed titles and scans `SD:/wiiu/apps/` at each
+startup so it can notice additions, removals and changed visibility settings.
+The persistent `wiiu/wiiunx2-names.cache` reuses eligible display names only;
+it does not cache the app list, icons or GPU textures. Re-discovery and icon
+loading on each boot are therefore expected.
+
 The on-screen search keyboard uses a QWERTY letter layout. The selected
 software tile has a brightness pulse on its gradient outline. Mii avatars sit
 on a white circular backing, and the multicolor ring rotates while the profile
@@ -64,8 +70,12 @@ For the StyleMiiU route it updates the exact `SD:/wiiu/themes/.../men.rpx`
 currently running; for a direct install it updates
 `SD:/wiiu/environments/aroma/men.rpx`. A verified timestamped
 `men.rpx.backup-*` is kept beside the selected RPX, and the console must be
-restarted after a successful update. If the SD filesystem refuses to replace
-the existing file directly, the updater uses a same-directory rename fallback;
+restarted after a successful update. The in-app updater keeps one verified
+backup: the version immediately before the latest update. Older timestamped
+in-app backups are removed only after a new backup has been verified; backups
+made manually or by `Update-SD.ps1` are left untouched. If the SD filesystem
+refuses to replace the existing file directly, the updater uses a same-directory
+rename fallback;
 keep the console powered on and do not remove the SD card until it finishes.
 If power is lost during that brief replacement window, restore the verified
 backup. If RPXLoadingModule cannot report the

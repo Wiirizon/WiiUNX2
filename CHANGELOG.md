@@ -1,5 +1,23 @@
 # WiiUNX2 changelog
 
+## 0.7.11 — Stable release
+
+- Prune older in-app updater backups only after a new verified pre-update
+  backup has been safely published.
+- Add opt-in diagnostics for empty and failed Wii-disc ODD queries.
+
+### Validation and known limitations
+
+- Focused updater test sources passed C++ syntax checks, but Windows
+  Application Control blocked execution of the generated test binary. The
+  full local host runner stopped for the same reason; focused version and
+  packaging tests passed.
+- The new backup-retention and ODD diagnostics have not been tested on Wii U
+  hardware. The release build and Linux host suite must pass before publishing.
+- The user reports all tested titles launch through the StyleMiiU RPX fork;
+  Wii-format discs still do not appear. Use the opt-in ODD diagnostics to
+  distinguish an empty result from an MCP query error.
+
 ## 0.7.10 — Stable release
 
 - Document the StyleMiiU suspension-overlay path label. The RPXLoadingModule

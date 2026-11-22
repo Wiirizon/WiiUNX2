@@ -141,6 +141,13 @@ titles reportedly work with the direct Aroma `men.rpx` install. The cause is
 not yet confirmed, so use the direct install for affected titles and keep a
 recovery path. Avoid competing menu-patching plugins during testing.
 
+When WiiUNX2 runs through StyleMiiU, the system's software-suspension overlay
+may show `wiiu/themes/WiiUNX2/men.rpx` instead of a friendly name. The
+RPXLoadingModule API used by WiiUNX2 provides no supported display-name
+override. The path is also used to identify the running RPX for updates, so
+WiiUNX2 leaves it unchanged; it does not patch system titles or use an
+unverified system-menu hook to change the label.
+
 `Update-SD.ps1` also updates the normal `aroma` environment and backs up an
 existing `men.rpx` before replacing it. Never replace internal system files.
 

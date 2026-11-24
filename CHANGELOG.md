@@ -9,9 +9,12 @@
 
 ### Validation and known limitations
 
-- Host tests cover marker-content validation, path selection and migration
-  error handling. The Windows host runner and Wii U cross-build still need to
-  be recorded for this release.
+- The [Wii U cross-build](https://github.com/Wiirizon/WiiUNX2/actions/runs/45480891149)
+  and [Ubuntu host/source validation](https://github.com/Wiirizon/WiiUNX2/actions/runs/45480903393)
+  passed, including migration tests and source archive checks. The focused
+  migration and version tests also passed locally.
+- The full local Windows host runner was blocked when Application Control
+  prevented `edgebleed.exe` from starting.
 - The marker and migration behavior on an actual Wii U SD card still need
   console testing.
 

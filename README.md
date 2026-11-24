@@ -54,8 +54,11 @@ loading on each boot are therefore expected.
 WiiUNX2-owned data (recent history, the name cache, account marker, and
 opt-in diagnostics) is stored under `SD:/wiiu/WiiUNX2/`. On first launch after
 upgrading, files from the previous `SD:/wiiu/` layout are moved there along
-with their recovery sidecars. Existing destination files are never replaced;
-if both layouts contain a file, both are kept and the organized copy is used.
+with their recovery sidecars. After a successful pass, a versioned completion
+marker lets later launches skip the legacy-directory scan; if migration is
+incomplete or the marker is missing or invalid, it retries. Existing
+destination files are never replaced; if both layouts contain a file, both
+are kept and the organized copy is used.
 The loader-required `men.rpx` paths, the StyleMiiU plugin, and updater staging
 and rollback backups remain outside this folder by design.
 The updater's rollback backup contains the RPX, not these data files. If you

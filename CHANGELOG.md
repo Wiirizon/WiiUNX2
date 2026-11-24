@@ -1,5 +1,20 @@
 # WiiUNX2 changelog
 
+## 0.7.13 — Stable release
+
+- Write a versioned data-layout completion marker after a fully successful
+  migration so later launches skip scanning the legacy Wii U data directory.
+- Retry migration if any file operation or the recent-history scan fails, or
+  if the completion marker is missing or invalid.
+
+### Validation and known limitations
+
+- Host tests cover marker-content validation, path selection and migration
+  error handling. The Windows host runner and Wii U cross-build still need to
+  be recorded for this release.
+- The marker and migration behavior on an actual Wii U SD card still need
+  console testing.
+
 ## 0.7.12 — Stable release
 
 - Group WiiUNX2-owned history, name cache, account marker and opt-in

@@ -23,10 +23,14 @@ struct FakeFiles {
 };
 
 void testPaths() {
-    assert(nx::userDataPath(true,"debug.log","wiiunx2.log")=="fs:/vol/external01/wiiu/WiiUNX2/debug.log");
-    assert(nx::userDataPath(false,"debug.log","wiiunx2.log")=="fs:/vol/external01/wiiu/wiiunx2.log");
-    assert(nx::recentHistoryPath(true,3)=="fs:/vol/external01/wiiu/WiiUNX2/recent-3.txt");
-    assert(nx::recentHistoryPath(false,255)=="fs:/vol/external01/wiiu/wiiunx2-recent-255.txt");
+    assert(nx::userDataPath(true,true,"debug.log","wiiunx2.log")=="fs:/vol/external01/wiiu/WiiUNX2/debug.log");
+    assert(nx::userDataPath(false,false,"debug.log","wiiunx2.log")=="fs:/vol/external01/wiiu/wiiunx2.log");
+    assert(nx::userDataPath(true,false,"debug.log","wiiunx2.log")=="fs:/vol/external01/wiiu/WiiUNX2/debug.log");
+    assert(nx::recentHistoryPath(true,true,3)=="fs:/vol/external01/wiiu/WiiUNX2/recent-3.txt");
+    assert(nx::recentHistoryPath(false,false,255)=="fs:/vol/external01/wiiu/wiiunx2-recent-255.txt");
+    assert(nx::validUserDataMigrationMarker(nx::kUserDataMigrationMarkerContents));
+    assert(!nx::validUserDataMigrationMarker("WiiUNX2 user data layout v2\n"));
+    assert(!nx::validUserDataMigrationMarker("WiiUNX2 user data layout v1\nextra"));
     assert(nx::legacyRecentHistoryLeaf(12)=="wiiunx2-recent-12.txt");
     assert(nx::isLegacyRecentHistoryLeaf("wiiunx2-recent-0.txt"));
     assert(nx::isLegacyRecentHistoryLeaf("wiiunx2-recent-255.txt.bak"));
@@ -50,6 +54,10 @@ void testMigration() {
     files.files["directory"]=false;
     assert(nx::migrateLegacyUserFile(files,"directory","directory-new")==nx::UserDataMigrationResult::InvalidSource);
     assert(files.exists("directory")&&!files.exists("directory-new"));
+
+    files.files["legacy-destination"]=true;files.files["destination-directory"]=false;
+    assert(nx::migrateLegacyUserFile(files,"legacy-destination","destination-directory")==nx::UserDataMigrationResult::InvalidDestination);
+    assert(files.isRegular("legacy-destination")&&!files.isRegular("destination-directory"));
 
     files.files["rename-failure"]=true;files.failRename=true;
     assert(nx::migrateLegacyUserFile(files,"rename-failure","rename-destination")==nx::UserDataMigrationResult::Failed);

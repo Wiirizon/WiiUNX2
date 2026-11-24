@@ -3,7 +3,13 @@
 #include <string>
 
 namespace nx {
-enum class UserDataMigrationResult {NotFound,Moved,Conflict,InvalidSource,Failed};
+constexpr const char *kUserDataMigrationMarker="layout-v1.complete";
+constexpr const char *kUserDataMigrationMarkerContents="WiiUNX2 user data layout v1\n";
+enum class UserDataMigrationResult {NotFound,Moved,Conflict,InvalidSource,InvalidDestination,Failed};
+
+inline bool validUserDataMigrationMarker(const std::string &contents) {
+    return contents==kUserDataMigrationMarkerContents;
+}
 
 inline bool isLegacyRecentHistoryLeaf(const std::string &leaf) {
     const std::string prefix="wiiunx2-recent-";
@@ -26,7 +32,8 @@ template<typename FileOps>
 UserDataMigrationResult migrateLegacyUserFile(FileOps &files,const std::string &source,const std::string &destination) {
     if(!files.exists(source)) return UserDataMigrationResult::NotFound;
     if(!files.isRegular(source)) return UserDataMigrationResult::InvalidSource;
-    if(files.exists(destination)) return UserDataMigrationResult::Conflict;
+    if(files.exists(destination))
+        return files.isRegular(destination)?UserDataMigrationResult::Conflict:UserDataMigrationResult::InvalidDestination;
     return files.renameNoReplace(source,destination)?UserDataMigrationResult::Moved:UserDataMigrationResult::Failed;
 }
 }

@@ -1,6 +1,6 @@
 # Disc detection
 
-The menu polls the optical drive (`MCP_TitleListByDeviceType`, device `ODD`) from the metadata worker thread once loading has finished. The decision logic is in `launcher/src/menu/DiscState.h` (`nx::DiscMonitor`), a pure state machine covered by `launcher/tests/disc-state.cpp`. The thin reader in `MainWindow.cpp` (`readDisc`) talks to the console API, and the loop reads `meta.xml` from the SD/disc file system; neither is host-tested.
+Installed titles are enumerated only from MLC and USB using `MCP_TitleListByAppAndDeviceType`; this excludes the ODD so a disc-only title cannot appear once as installed software and again as a disc. The menu separately polls the optical drive (`MCP_TitleListByDeviceType`, device `ODD`) from the metadata worker thread once loading has finished. A title genuinely present on both MLC/USB and disc appears twice to distinguish the installed copy from the disc launch option. The selected disc title has a small disc icon to the left of its name instead of a `(Disc)` suffix. The decision logic is in `launcher/src/menu/DiscState.h` (`nx::DiscMonitor`), a pure state machine covered by `launcher/tests/disc-state.cpp`. The thin reader in `MainWindow.cpp` (`readDisc`) talks to the console API, and the loop reads `meta.xml` from the SD/disc file system; neither is host-tested.
 
 ## Rules (the state machine is proven by host tests on synthetic samples)
 

@@ -1,5 +1,20 @@
 # WiiUNX2 changelog
 
+## 0.7.14 — Stable release
+
+- Enumerate installed titles from MLC and USB only; the ODD is handled by the
+  separate disc monitor, preventing a disc-only title from appearing twice.
+- Mark the selected disc title with a simple icon instead of a `(Disc)` suffix.
+- Retain the updater's existing single, verified pre-update backup policy for
+  another console update test.
+
+### Validation and known limitations
+
+- Host/source validation and the Wii U cross-build are pending for this
+  release.
+- Disc detection, disc launch, and the updater backup count still need
+  console testing.
+
 ## 0.7.13 — Stable release
 
 - Write a versioned data-layout completion marker after a fully successful

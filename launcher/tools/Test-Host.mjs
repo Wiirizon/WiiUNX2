@@ -37,6 +37,7 @@ run(compiler,['-std=c++17','-Wall','-Wextra',path.join(root,'launcher/tests/edge
 run(process.execPath,['launcher/tests/edgebleed-assets.mjs',bleedFilter,output]);console.log('PASS edgebleed-assets');
 run(process.execPath,['--test','launcher/tests/sounds.mjs']);
 run(process.execPath,['--test','launcher/tests/version.mjs']);
+run(process.execPath,['--test','launcher/tests/disc-listing.mjs']);
 run(process.execPath,['--test','launcher/tests/update-ca-bundle.mjs']);
 run(process.execPath,['--test','launcher/tests/dpad-glyph.mjs']);
 run(process.execPath,['--test','launcher/tests/package-release.mjs']);

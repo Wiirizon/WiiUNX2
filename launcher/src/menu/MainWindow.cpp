@@ -142,7 +142,7 @@ MainWindow::MainWindow(int32_t w, int32_t h, MenuMusic *sound)
     };
     for (auto name:dockFiles) dock.push_back(asset(name));
     profile=asset("nxProfile.png");profileBacking=asset("nxProfileBacking.png");ring=asset("nxRing.png");
-    network=asset("nxNetwork.png");
+    network=asset("nxNetwork.png");discIcon=asset("nxDisc.png");
     tileBlank=asset("nxTileBlank.png");tileShadow=asset("nxTileShadow.png");dockSurface=asset("nxDock.png");
     for(unsigned i=0;i<8;++i) tileFocusFrames.push_back(asset(("nxTileFocus"+std::to_string(i)+".png").c_str()));
     modalPanel=asset("nxModalPanel.png");accountPanel=asset("nxAccountPanel.png");
@@ -190,7 +190,7 @@ MainWindow::~MainWindow() {
     gameList.titleAdded.disconnect(this);
     gameList.titleUpdated.disconnect(this);
     gameList.titleListChanged.disconnect(this);
-    tiles.clear(); dock.clear();tileFocusFrames.clear();prompts.clear();modalPrompts.clear();searchPrompts.clear();accountPrompts.clear(); profile.reset(); profileBacking.reset(); ring.reset(); network.reset();tileBlank.reset();tileShadow.reset();dockSurface.reset();
+    tiles.clear(); dock.clear();tileFocusFrames.clear();prompts.clear();modalPrompts.clear();searchPrompts.clear();accountPrompts.clear(); profile.reset(); profileBacking.reset(); ring.reset(); network.reset();discIcon.reset();tileBlank.reset();tileShadow.reset();dockSurface.reset();
     modalPanel.reset();accountPanel.reset();accountCard.reset();searchPanel.reset();keyCard.reset();keyFocus.reset();
     for(auto *data:assetData) Resources::RemoveImageData(data);
     if(acReady) ACFinalize();
@@ -328,7 +328,7 @@ void MainWindow::process() {
                             uint8_t *xml=nullptr;uint32_t size=0;
                             if(FSUtils::LoadFileToMem(("fs:"+update.gamePath+"/meta/meta.xml").c_str(),&xml,&size,1024*1024)>0) {
                                 auto name=nx::xmlTitle(std::string(reinterpret_cast<char*>(xml),size));
-                                if(!name.empty()) update.name=name+" (Disc)";
+                                if(!name.empty()) update.name=name;
                             }
                             free(xml);
                         }
@@ -409,7 +409,17 @@ void MainWindow::draw(CVideo *v) {
         batteryFill.setScaleX(fraction);
         drawImage(batteryFill,v,1203+12*fraction,76);
     }
-    if(focusRow==0) drawText(title,v,640,166);
+    if(focusRow==0) {
+        if(!visible.empty()&&selectedTile().id==discTileId&&discIcon) {
+            constexpr float iconSize=22.f,gap=8.f;
+            const float titleWidth=title.getTextWidth();
+            const float groupWidth=titleWidth+gap+iconSize;
+            discIcon->setScale(iconSize/32.f);
+            drawImage(*discIcon,v,640-groupWidth/2+iconSize/2,166);
+            discIcon->setScale(1.f);
+            drawText(title,v,640+(iconSize+gap)/2,166);
+        } else drawText(title,v,640,166);
+    }
     size_t count=std::max(size_t(5),visible.size());
     for(size_t i=0;i<count;++i) {
         float x=nx::tileFirstX+i*float(nx::tileStep)-scroll;

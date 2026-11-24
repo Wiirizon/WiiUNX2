@@ -126,7 +126,7 @@ private:
     uint8_t activeSlot=0;
     std::vector<GuiImageData *> assetData;
     std::vector<std::unique_ptr<GuiImage>> dock;
-    std::unique_ptr<GuiImage> profile, profileBacking, ring, network, tileBlank, tileShadow, dockSurface;
+    std::unique_ptr<GuiImage> profile, profileBacking, ring, network, discIcon, tileBlank, tileShadow, dockSurface;
     std::vector<std::unique_ptr<GuiImage>> tileFocusFrames;
     std::unique_ptr<GuiImage> modalPanel, accountPanel, accountCard, searchPanel, keyCard, keyFocus;
     struct FooterPrompt {

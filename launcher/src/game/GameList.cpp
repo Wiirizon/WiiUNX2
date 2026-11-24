@@ -44,25 +44,31 @@ int32_t GameList::load() {
     if(handle<0) { DEBUG_FUNCTION_LINE("MCP_Open failed: %d",handle); return -1; }
     int count=MCP_TitleCount(handle);
     if(count<0 || count>8192) {MCP_Close(handle);return -1;}
-    // Per-type lists use a full-size buffer, with returned counts checked before access.
+    // Per-type lists use a full-size buffer; querying MLC and USB separately excludes the ODD.
     // This API does not take Homebrew on Menu's synthetic titles from MCP_TitleList.
     std::vector<MCPTitleListType> list(std::max(count,1));
     const MCPAppType types[]={MCP_APP_TYPE_GAME,MCP_APP_TYPE_GAME_WII,MCP_APP_TYPE_SYSTEM_APPS,
         MCP_APP_TYPE_SYSTEM_SETTINGS,MCP_APP_TYPE_FRIEND_LIST,MCP_APP_TYPE_MIIVERSE,
         MCP_APP_TYPE_ESHOP,MCP_APP_TYPE_BROWSER,MCP_APP_TYPE_DOWNLOAD_MANAGEMENT,MCP_APP_TYPE_ACCOUNT_APPS};
+    const MCPDeviceType devices[]={MCP_DEVICE_TYPE_MLC,MCP_DEVICE_TYPE_USB};
     for(auto type:types) {
-        uint32_t actual=0;
-        auto result=MCP_TitleListByAppType(handle,type,&actual,list.data(),list.size()*sizeof(MCPTitleListType));
-        if(result<0 || actual>list.size()) {DEBUG_FUNCTION_LINE("MCP list failed type %u: %d",unsigned(type),int(result));continue;}
-        for(uint32_t i=0;i<actual;++i) {
-            const auto &item=list[i];
-            if(getGameInfo(item.titleId)) continue;
-            auto *info=new gameInfo{};
-            info->titleId=item.titleId;info->appType=item.appType;info->titleVersion=item.titleVersion;
-            info->gamePath=nx::bounded(item.path,sizeof(item.path));
-            char fallback[48];std::snprintf(fallback,sizeof(fallback),"Software %016llX",(unsigned long long)item.titleId);
-            info->name=fallback;
-            fullGameList.push_back(info); titleAdded(info);
+        for(auto device:devices) {
+            uint32_t actual=0;
+            auto result=MCP_TitleListByAppAndDeviceType(handle,type,device,&actual,list.data(),list.size()*sizeof(MCPTitleListType));
+            if(result<0 || actual>list.size()) {
+                DEBUG_FUNCTION_LINE("MCP list failed type %u device %u: %d",unsigned(type),unsigned(device),int(result));
+                continue;
+            }
+            for(uint32_t i=0;i<actual;++i) {
+                const auto &item=list[i];
+                if(getGameInfo(item.titleId)) continue;
+                auto *info=new gameInfo{};
+                info->titleId=item.titleId;info->appType=item.appType;info->titleVersion=item.titleVersion;
+                info->gamePath=nx::bounded(item.path,sizeof(item.path));
+                char fallback[48];std::snprintf(fallback,sizeof(fallback),"Software %016llX",(unsigned long long)item.titleId);
+                info->name=fallback;
+                fullGameList.push_back(info); titleAdded(info);
+            }
         }
     }
     // TVii has no named app-type constant in wut and was omitted by the type allowlist.

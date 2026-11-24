@@ -21,7 +21,8 @@ void ensureNamesLoaded() {
     if(namesLoaded) return;
     namesLoaded=true;
     nx::StdioFiles files;
-    const std::string path=nx::userDataPath(WiiUNX2UserDataDirectoryReady(),"names.cache","wiiunx2-names.cache");
+    const std::string path=nx::userDataPath(WiiUNX2UserDataDirectoryReady(),
+        WiiUNX2UserDataMigrationComplete(),"names.cache","wiiunx2-names.cache");
     if(!nx::loadNameCache(files,path,names)) DEBUG_FUNCTION_LINE("Name cache unavailable; starting empty");
 }
 }
@@ -146,6 +147,7 @@ bool GameList::loadNext() {
 void GameList::saveNameCache() {
     ensureNamesLoaded();
     nx::StdioFiles files;
-    const std::string path=nx::userDataPath(WiiUNX2UserDataDirectoryReady(),"names.cache","wiiunx2-names.cache");
+    const std::string path=nx::userDataPath(WiiUNX2UserDataDirectoryReady(),
+        WiiUNX2UserDataMigrationComplete(),"names.cache","wiiunx2-names.cache");
     if(!nx::saveNameCache(files,path,names)) DEBUG_FUNCTION_LINE("Name cache save failed; previous file retained");
 }

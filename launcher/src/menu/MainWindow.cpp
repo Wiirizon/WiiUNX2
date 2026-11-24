@@ -41,7 +41,8 @@ static const char *dockNames[] = {"Friend List", "Internet Browser", "Download M
 static const char *dockFiles[] = {"nxFriends.png", "nxBrowser.png", "nxDownloads.png", "nxShop.png", "nxMii.png", "nxData.png", "nxControllers.png", "nxSettings.png", "nxPower.png"};
 static const char *keys=nx::keyboardCharacters();
 static std::string accountChoicePath() {
-    return nx::userDataPath(WiiUNX2UserDataDirectoryReady(),"account-chosen.txt","wiiunx2-account-chosen.txt");
+    return nx::userDataPath(WiiUNX2UserDataDirectoryReady(),WiiUNX2UserDataMigrationComplete(),
+                           "account-chosen.txt","wiiunx2-account-chosen.txt");
 }
 static bool isMenu(uint64_t id) { return (id >> 32) == 0x00050010 && ((id & 0xffffff00) == 0x10040000 || (id & 0xffffff00) == 0x10040100 || (id & 0xffffff00) == 0x10040200); }
 static constexpr uint64_t discTileId=0xfffffffffffffffeULL;
@@ -721,8 +722,10 @@ void MainWindow::activate() {
 namespace {
 // Opt-in only. Called before the launch call, which may replace this process.
 void recordLaunch(const char *stage,uint64_t id,int appType,int patchResult,const char *path) {
-    const std::string marker=nx::userDataPath(WiiUNX2UserDataDirectoryReady(),"launch-log.enable","wiiunx2-launch-log.enable");
-    const std::string log=nx::userDataPath(WiiUNX2UserDataDirectoryReady(),"launch.log","wiiunx2-launch.log");
+    const std::string marker=nx::userDataPath(WiiUNX2UserDataDirectoryReady(),WiiUNX2UserDataMigrationComplete(),
+        "launch-log.enable","wiiunx2-launch-log.enable");
+    const std::string log=nx::userDataPath(WiiUNX2UserDataDirectoryReady(),WiiUNX2UserDataMigrationComplete(),
+        "launch.log","wiiunx2-launch.log");
     if(!nx::launchLogEnabled(marker)) return;
     if(!nx::appendLaunchLog(log,nx::formatLaunchRecord(id,stage,appType,patchResult,path))) DEBUG_FUNCTION_LINE("Launch log append failed");
 }
@@ -813,7 +816,8 @@ void MainWindow::markPlayed(uint64_t id) {
     recent.erase(std::remove(recent.begin(),recent.end(),id),recent.end());
     recent.insert(recent.begin(),id);if(recent.size()>512) recent.resize(512);
     localDays[id]=uint32_t(OSTicksToSeconds(OSGetTime())/86400);
-    const std::string path=nx::recentHistoryPath(WiiUNX2UserDataDirectoryReady(),unsigned(activeSlot));
+    const std::string path=nx::recentHistoryPath(WiiUNX2UserDataDirectoryReady(),
+        WiiUNX2UserDataMigrationComplete(),unsigned(activeSlot));
     if(!nx::saveHistory(path,recent,localDays)) DEBUG_FUNCTION_LINE("Recent history save failed; previous file retained");
     viewDirty=true;
 }
@@ -972,7 +976,8 @@ void MainWindow::drawAccounts(CVideo *v) {
 void MainWindow::rebuildView() {
     if(!recentLoaded) {
         recentLoaded=true;
-        const std::string path=nx::recentHistoryPath(WiiUNX2UserDataDirectoryReady(),unsigned(activeSlot));
+        const std::string path=nx::recentHistoryPath(WiiUNX2UserDataDirectoryReady(),
+            WiiUNX2UserDataMigrationComplete(),unsigned(activeSlot));
         FILE *file=nx::openHistory(path);
         if(file) {unsigned long long id;unsigned day;while(recent.size()<512 && std::fscanf(file,"%llx %u",&id,&day)==2) {recent.push_back(id);localDays[id]=day;}std::fclose(file);}
     }

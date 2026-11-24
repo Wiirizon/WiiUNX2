@@ -17,10 +17,11 @@ inline bool hasRegularDataFile(const std::string &path) {
     return false;
 }
 
-inline std::string userDataPath(bool directoryReady,const char *newLeaf,const char *legacyLeaf) {
+inline std::string userDataPath(bool directoryReady,bool migrationComplete,const char *newLeaf,const char *legacyLeaf) {
     const std::string oldPath=std::string(kWiiuDirectory)+"/"+legacyLeaf;
     const std::string newPath=std::string(kUserDataDirectory)+"/"+newLeaf;
     if(!directoryReady) return oldPath;
+    if(migrationComplete) return newPath;
     if(hasRegularDataFile(newPath)||!hasRegularDataFile(oldPath)) return newPath;
     return oldPath;
 }
@@ -37,9 +38,10 @@ inline std::string legacyRecentHistoryLeaf(unsigned slot) {
     return leaf;
 }
 
-inline std::string recentHistoryPath(bool directoryReady,unsigned slot) {
-    return userDataPath(directoryReady,recentHistoryLeaf(slot).c_str(),legacyRecentHistoryLeaf(slot).c_str());
+inline std::string recentHistoryPath(bool directoryReady,bool migrationComplete,unsigned slot) {
+    return userDataPath(directoryReady,migrationComplete,recentHistoryLeaf(slot).c_str(),legacyRecentHistoryLeaf(slot).c_str());
 }
 }
 
 extern "C" bool WiiUNX2UserDataDirectoryReady();
+extern "C" bool WiiUNX2UserDataMigrationComplete();

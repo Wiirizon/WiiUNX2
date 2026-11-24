@@ -10,8 +10,9 @@
 
 ### Validation and known limitations
 
-- Host/source validation and the Wii U cross-build are pending for this
-  release.
+- The [Wii U cross-build](https://github.com/Wiirizon/WiiUNX2/actions/runs/45489519028)
+  and [Ubuntu host/source validation](https://github.com/Wiirizon/WiiUNX2/actions/runs/45489517793)
+  passed, including the new disc-listing and icon checks.
 - Disc detection, disc launch, and the updater backup count still need
   console testing.
 

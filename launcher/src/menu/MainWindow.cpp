@@ -11,6 +11,7 @@
 #include "game/Homebrew.h"
 #include "utils/AtomicHistory.h"
 #include "utils/LaunchLog.h"
+#include "utils/UserDataPaths.h"
 #include <rpxloader/rpxloader.h>
 #include <tuple>
 #include "game/Metadata.h"
@@ -39,7 +40,9 @@ extern "C" int32_t ACPCheckTitleLaunchByTitleListTypeEx(MCPTitleListType*,uint32
 static const char *dockNames[] = {"Friend List", "Internet Browser", "Download Management", "Nintendo eShop", "Mii Maker", "Data Management", "Controllers", "System Settings", "Power"};
 static const char *dockFiles[] = {"nxFriends.png", "nxBrowser.png", "nxDownloads.png", "nxShop.png", "nxMii.png", "nxData.png", "nxControllers.png", "nxSettings.png", "nxPower.png"};
 static const char *keys=nx::keyboardCharacters();
-static constexpr const char *accountChoicePath="fs:/vol/external01/wiiu/wiiunx2-account-chosen.txt";
+static std::string accountChoicePath() {
+    return nx::userDataPath(WiiUNX2UserDataDirectoryReady(),"account-chosen.txt","wiiunx2-account-chosen.txt");
+}
 static bool isMenu(uint64_t id) { return (id >> 32) == 0x00050010 && ((id & 0xffffff00) == 0x10040000 || (id & 0xffffff00) == 0x10040100 || (id & 0xffffff00) == 0x10040200); }
 static constexpr uint64_t discTileId=0xfffffffffffffffeULL;
 static uint64_t bootTimeTicks() {
@@ -47,7 +50,8 @@ static uint64_t bootTimeTicks() {
 }
 static bool accountWasChosenThisBoot() {
     uint8_t *buffer=nullptr;uint32_t size=0;
-    if(FSUtils::LoadFileToMem(accountChoicePath,&buffer,&size,64)<=0 || !buffer) return false;
+    const std::string path=accountChoicePath();
+    if(FSUtils::LoadFileToMem(path.c_str(),&buffer,&size,64)<=0 || !buffer) return false;
     std::string text(reinterpret_cast<char *>(buffer),size);free(buffer);
     char *end=nullptr;
     const unsigned long long saved=std::strtoull(text.c_str(),&end,16);
@@ -59,8 +63,9 @@ static void rememberAccountChoiceThisBoot() {
     FSUtils::CreateSubfolder("fs:/vol/external01/wiiu");
     char text[32];const int length=std::snprintf(text,sizeof(text),"%016llX\n",
                                                 static_cast<unsigned long long>(bootTimeTicks()));
+    const std::string path=accountChoicePath();
     if(length<=0 || length>=int(sizeof(text)) ||
-       FSUtils::saveBufferToFile(accountChoicePath,text,uint32_t(length))!=length)
+       FSUtils::saveBufferToFile(path.c_str(),text,uint32_t(length))!=length)
         DEBUG_FUNCTION_LINE("Could not save the boot account-choice marker");
 }
 static nx::DiscSample readDisc(MCPTitleListType &title,uint32_t *appTypeOut=nullptr) {
@@ -714,12 +719,12 @@ void MainWindow::activate() {
     showMessage(std::string(dockNames[dockIndex])+" is not installed or could not be found.");
 }
 namespace {
-constexpr const char *kLaunchLogMarker="fs:/vol/external01/wiiu/wiiunx2-launch-log.enable";
-constexpr const char *kLaunchLogFile="fs:/vol/external01/wiiu/wiiunx2-launch.log";
 // Opt-in only. Called before the launch call, which may replace this process.
 void recordLaunch(const char *stage,uint64_t id,int appType,int patchResult,const char *path) {
-    if(!nx::launchLogEnabled(kLaunchLogMarker)) return;
-    if(!nx::appendLaunchLog(kLaunchLogFile,nx::formatLaunchRecord(id,stage,appType,patchResult,path))) DEBUG_FUNCTION_LINE("Launch log append failed");
+    const std::string marker=nx::userDataPath(WiiUNX2UserDataDirectoryReady(),"launch-log.enable","wiiunx2-launch-log.enable");
+    const std::string log=nx::userDataPath(WiiUNX2UserDataDirectoryReady(),"launch.log","wiiunx2-launch.log");
+    if(!nx::launchLogEnabled(marker)) return;
+    if(!nx::appendLaunchLog(log,nx::formatLaunchRecord(id,stage,appType,patchResult,path))) DEBUG_FUNCTION_LINE("Launch log append failed");
 }
 }
 void MainWindow::launch(uint64_t id) {
@@ -808,7 +813,7 @@ void MainWindow::markPlayed(uint64_t id) {
     recent.erase(std::remove(recent.begin(),recent.end(),id),recent.end());
     recent.insert(recent.begin(),id);if(recent.size()>512) recent.resize(512);
     localDays[id]=uint32_t(OSTicksToSeconds(OSGetTime())/86400);
-    char path[96];std::snprintf(path,sizeof(path),"fs:/vol/external01/wiiu/wiiunx2-recent-%u.txt",unsigned(activeSlot));
+    const std::string path=nx::recentHistoryPath(WiiUNX2UserDataDirectoryReady(),unsigned(activeSlot));
     if(!nx::saveHistory(path,recent,localDays)) DEBUG_FUNCTION_LINE("Recent history save failed; previous file retained");
     viewDirty=true;
 }
@@ -967,7 +972,7 @@ void MainWindow::drawAccounts(CVideo *v) {
 void MainWindow::rebuildView() {
     if(!recentLoaded) {
         recentLoaded=true;
-        char path[96];std::snprintf(path,sizeof(path),"fs:/vol/external01/wiiu/wiiunx2-recent-%u.txt",unsigned(activeSlot));
+        const std::string path=nx::recentHistoryPath(WiiUNX2UserDataDirectoryReady(),unsigned(activeSlot));
         FILE *file=nx::openHistory(path);
         if(file) {unsigned long long id;unsigned day;while(recent.size()<512 && std::fscanf(file,"%llx %u",&id,&day)==2) {recent.push_back(id);localDays[id]=day;}std::fclose(file);}
     }

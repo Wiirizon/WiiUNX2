@@ -47,9 +47,20 @@ console at startup and remembers the choice for the rest of that system boot.
 
 WiiUNX2 still enumerates installed titles and scans `SD:/wiiu/apps/` at each
 startup so it can notice additions, removals and changed visibility settings.
-The persistent `wiiu/wiiunx2-names.cache` reuses eligible display names only;
+The persistent `wiiu/WiiUNX2/names.cache` reuses eligible display names only;
 it does not cache the app list, icons or GPU textures. Re-discovery and icon
 loading on each boot are therefore expected.
+
+WiiUNX2-owned data (recent history, the name cache, account marker, and
+opt-in diagnostics) is stored under `SD:/wiiu/WiiUNX2/`. On first launch after
+upgrading, files from the previous `SD:/wiiu/` layout are moved there along
+with their recovery sidecars. Existing destination files are never replaced;
+if both layouts contain a file, both are kept and the organized copy is used.
+The loader-required `men.rpx` paths, the StyleMiiU plugin, and updater staging
+and rollback backups remain outside this folder by design.
+The updater's rollback backup contains the RPX, not these data files. If you
+restore a pre-v0.7.12 RPX and want its old history/cache/logs, copy the files
+back to the legacy `SD:/wiiu/` names.
 
 The on-screen search keyboard uses a QWERTY letter layout. The selected
 software tile has a brightness pulse on its gradient outline. Mii avatars sit

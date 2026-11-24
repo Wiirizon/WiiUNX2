@@ -5,6 +5,7 @@
 #include "Homebrew.h"
 #include "NameCache.h"
 #include "fs/FSUtils.h"
+#include "utils/UserDataPaths.h"
 #include "utils/logger.h"
 #include <nn/acp/title.h>
 #include <malloc.h>
@@ -15,14 +16,13 @@ namespace {
 // CPU strings only. The loader is joined before a replacement menu is created.
 nx::NameMap names;
 bool namesLoaded=false;
-// Same SD directory as the recent-history file written by MainWindow::markPlayed.
-const char *const nameCachePath="fs:/vol/external01/wiiu/wiiunx2-names.cache";
 // Loader thread only. Read once before the first use. A missing or corrupt file starts empty; the next save rotates it to .bak.
 void ensureNamesLoaded() {
     if(namesLoaded) return;
     namesLoaded=true;
     nx::StdioFiles files;
-    if(!nx::loadNameCache(files,nameCachePath,names)) DEBUG_FUNCTION_LINE("Name cache unavailable; starting empty");
+    const std::string path=nx::userDataPath(WiiUNX2UserDataDirectoryReady(),"names.cache","wiiunx2-names.cache");
+    if(!nx::loadNameCache(files,path,names)) DEBUG_FUNCTION_LINE("Name cache unavailable; starting empty");
 }
 }
 
@@ -146,5 +146,6 @@ bool GameList::loadNext() {
 void GameList::saveNameCache() {
     ensureNamesLoaded();
     nx::StdioFiles files;
-    if(!nx::saveNameCache(files,nameCachePath,names)) DEBUG_FUNCTION_LINE("Name cache save failed; previous file retained");
+    const std::string path=nx::userDataPath(WiiUNX2UserDataDirectoryReady(),"names.cache","wiiunx2-names.cache");
+    if(!nx::saveNameCache(files,path,names)) DEBUG_FUNCTION_LINE("Name cache save failed; previous file retained");
 }

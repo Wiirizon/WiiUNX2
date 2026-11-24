@@ -1,5 +1,21 @@
 # WiiUNX2 changelog
 
+## 0.7.12 — Stable release
+
+- Group WiiUNX2-owned history, name cache, account marker and opt-in
+  diagnostics under `SD:/wiiu/WiiUNX2/`.
+- Migrate existing files and recovery sidecars from `SD:/wiiu/` without
+  overwriting files already present in the new folder.
+- Keep `men.rpx`, StyleMiiU plugin files, and updater staging/rollback files
+  at their required or transaction-safe locations.
+- Note that restoring an older RPX does not automatically move data files back
+  to the legacy layout.
+
+### Validation and known limitations
+
+- The directory migration and all SD storage changes still require console
+  testing. Existing records are preserved if a migration conflict occurs.
+
 ## 0.7.11 — Stable release
 
 - Prune older in-app updater backups only after a new verified pre-update

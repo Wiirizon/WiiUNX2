@@ -13,8 +13,12 @@
 
 ### Validation and known limitations
 
-- The directory migration and all SD storage changes still require console
-  testing. Existing records are preserved if a migration conflict occurs.
+- The [Wii U cross-build](https://github.com/Wiirizon/WiiUNX2/actions/runs/45478735371)
+  and [Ubuntu host/source validation](https://github.com/Wiirizon/WiiUNX2/actions/runs/45478742936)
+  passed, including path/migration tests and source archive checks.
+- The SD directory migration still needs console testing. Existing destination
+  files are not overwritten; unresolved legacy files remain available at the
+  old path when a migration fails.
 
 ## 0.7.11 — Stable release
 

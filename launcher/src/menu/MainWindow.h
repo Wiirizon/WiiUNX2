@@ -77,6 +77,7 @@ private:
     std::future<std::unordered_map<uint64_t,uint32_t>> historyRead;
     uint8_t historySlot=255;
     uint64_t discRecentId=0;
+    bool discIsInserted=false;
     bool recentLoaded=false, dragging=false, dragMoved=false;
     bool userNavigated=false;
     float dragStartX=0, dragStartScroll=0;

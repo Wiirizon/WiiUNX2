@@ -1,5 +1,20 @@
 # WiiUNX2 changelog
 
+## 0.7.15 — Stable release
+
+- When a disc is detected, place its tile first in the **Recently played**
+  sort for the current insertion without changing saved play history or focus.
+- Enlarge and refine the selected-disc icon.
+- Use the system-managed title launch API for installed games instead of its
+  explicit no-splash variant; system splash behavior needs console confirmation.
+
+### Validation and known limitations
+
+- Host/source validation and the Wii U cross-build are pending.
+- The latest direct-Aroma logs show the Wii U disc launch/return path, but
+  report empty ODD results during the Wii-disc test. Wii-disc detection and
+  the 20–30 second disc-return delay remain unverified/under investigation.
+
 ## 0.7.14 — Stable release
 
 - Enumerate installed titles from MLC and USB only; the ODD is handled by the

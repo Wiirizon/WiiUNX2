@@ -4,6 +4,9 @@
 using nx::DiscAction;using nx::DiscMonitor;using nx::DiscPlatform;using nx::DiscSample;
 #define CHECK(x) do { if(!(x)) { std::cerr << "FAILED line " << __LINE__ << ": " #x "\n"; std::exit(1); } } while(0)
 int main() {
+    CHECK(nx::recentlyInsertedDiscBefore(true,false,true));
+    CHECK(!nx::recentlyInsertedDiscBefore(false,true,true));
+    CHECK(!nx::recentlyInsertedDiscBefore(true,false,false));
     { DiscMonitor m; // insert reported once, repeats are silent
       CHECK(m.update(DiscSample::empty())==DiscAction::None);
       CHECK(m.update(DiscSample::game(0x500)) ==DiscAction::Inserted);

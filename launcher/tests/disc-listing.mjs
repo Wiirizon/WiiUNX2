@@ -19,9 +19,24 @@ test('disc titles use a separate icon instead of a name suffix',()=>{
   const source=read('launcher/src/menu/MainWindow.cpp');
   assert.match(source,/discIcon=asset\("nxDisc\.png"\)/);
   assert.match(source,/selectedTile\(\)\.id==discTileId&&discIcon/);
+  assert.match(source,/iconSize=30\.f/);
   assert.doesNotMatch(source,/\+" \(Disc\)"/);
   const asset=fs.readFileSync(path.join(root,'launcher/data/images/nxDisc.png'));
   assert.deepEqual([...asset.subarray(0,8)],[137,80,78,71,13,10,26,10]);
-  assert.equal(asset.readUInt32BE(16),32);
-  assert.equal(asset.readUInt32BE(20),32);
+  assert.equal(asset.readUInt32BE(16),48);
+  assert.equal(asset.readUInt32BE(20),48);
+});
+
+test('disc insertion changes Recent ordering without recording a play',()=>{
+  const state=read('launcher/src/menu/DiscState.h');
+  const source=read('launcher/src/menu/MainWindow.cpp');
+  assert.match(state,/recentlyInsertedDiscBefore/);
+  assert.match(source,/recentlyInsertedDiscBefore\(aIsDisc,bIsDisc,discIsInserted\)/);
+  assert.doesNotMatch(source,/markPlayed\(info->launchId\)/);
+});
+
+test('installed game launch permits the system splash path',()=>{
+  const source=read('launcher/src/menu/MainWindow.cpp');
+  assert.match(source,/SYSLaunchTitle\(id\)/);
+  assert.doesNotMatch(source,/_SYSLaunchTitleWithStdArgsInNoSplash/);
 });

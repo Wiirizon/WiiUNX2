@@ -1,6 +1,6 @@
 # Disc detection
 
-Installed titles are enumerated only from MLC and USB using `MCP_TitleListByAppAndDeviceType`; this excludes the ODD so a disc-only title cannot appear once as installed software and again as a disc. The menu separately polls the optical drive (`MCP_TitleListByDeviceType`, device `ODD`) from the metadata worker thread once loading has finished. A title genuinely present on both MLC/USB and disc appears twice to distinguish the installed copy from the disc launch option. The selected disc title has a small disc icon to the left of its name instead of a `(Disc)` suffix. The decision logic is in `launcher/src/menu/DiscState.h` (`nx::DiscMonitor`), a pure state machine covered by `launcher/tests/disc-state.cpp`. The thin reader in `MainWindow.cpp` (`readDisc`) talks to the console API, and the loop reads `meta.xml` from the SD/disc file system; neither is host-tested.
+Installed titles are enumerated only from MLC and USB using `MCP_TitleListByAppAndDeviceType`; this excludes the ODD so a disc-only title cannot appear once as installed software and again as a disc. The menu separately polls the optical drive (`MCP_TitleListByDeviceType`, device `ODD`) from the metadata worker thread once loading has finished. A title genuinely present on both MLC/USB and disc appears twice to distinguish the installed copy from the disc launch option. The selected disc title has a larger disc icon to the left of its name instead of a `(Disc)` suffix. On insertion, it ranks first only while using **Recently played** sort; this ephemeral promotion does not write to play history or change selection. The decision logic is in `launcher/src/menu/DiscState.h` (`nx::DiscMonitor`), a pure state machine covered by `launcher/tests/disc-state.cpp`. The thin reader in `MainWindow.cpp` (`readDisc`) talks to the console API, and the loop reads `meta.xml` from the SD/disc file system; neither is host-tested.
 
 ## Rules (the state machine is proven by host tests on synthetic samples)
 
@@ -18,6 +18,7 @@ Wii U disc metadata (`meta.xml`) is read only when the monitor reports Inserted 
 
 - An ODD entry with `MCP_APP_TYPE_GAME_WII` is shown as a Wii game disc. Selecting it calls `SYSLaunchTitle` with the title ID reported by MCP. This requests a system-managed title launch after WiiUNX2 exits; it deliberately does not use the Wii U disc path handoff or `ACPAssignTitlePatch`. The Wii U disc launch path is unchanged.
 - The launch request is based on the MCP app type and WUT's documented system title-launch API, but the complete disc-to-vWii transition is unverified on hardware. The ODD entry, returned title ID/path, successful Wii-mode launch, and return behavior must still be confirmed. Keep issue #28 open until those checks pass.
+- The installed Wii U title path uses `SYSLaunchTitle` to let the system perform its normal title transition. The previous call explicitly requested the no-splash variant; showing a game splash through the system-managed call is not yet confirmed on hardware.
 - No NAND or system-title changes are made. The code only reads MCP's ODD list, requests the system title launch, and records the existing opt-in launch diagnostic.
 - Other states not handled: dirty or unreadable discs (expected to appear as Error or Empty), a disc inserted while the drive is busy, discs of another region, and discs needing an update. The 2 s base interval is not proven to match stock timing.
 
@@ -30,3 +31,8 @@ Diagnostics: each distinct Wii disc app type and unsupported app type gets one d
 - [ ] Insert a Wii disc: check for a "Wii Game Disc" tile and record its ODD app type without sharing title IDs.
 - [ ] Select the Wii disc tile: verify whether the system enters vWii and whether the expected return path works. Do not change NAND or system titles.
 - [ ] Insert a scratched or unreadable disc: no flicker and no log spam.
+
+## Latest direct-Aroma test report (2026-11-25)
+
+- A Wii U Nintendo Land disc appeared once, launched successfully, and was removed from the row after ejection. The user observed a 20–30 second return to the menu after exiting that disc title; the Kirby Wii U title returned quickly. Existing diagnostics do not establish whether the disc-title delay is normal.
+- During the Wii-disc insertion, `debug.log` repeatedly recorded that the ODD query returned no entries. There was no Wii-disc ODD app-type diagnostic and `launch.log` contained no `wii-disc` launch record. This points to detection/listing as the current blocker; the launch path was not reached, and the log cannot establish whether MCP or the drive failed to expose the disc.

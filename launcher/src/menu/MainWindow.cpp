@@ -204,6 +204,7 @@ void MainWindow::listChanged(GameList *) {}
 void MainWindow::titleChanged(gameInfo *info) {
     if(info && info->titleId==discTileId) {
         discRecentId=info->launchId;
+        discIsInserted=info->launchId!=0&&!info->name.empty();
         auto it=std::find_if(tiles.begin(),tiles.end(),[](const auto &t){return t.id==discTileId;});
         if(it!=tiles.end() && (info->name.empty() || it->path!=info->gamePath)) {tiles.erase(it);viewDirty=true;}
         if(info->name.empty()) return;
@@ -411,10 +412,10 @@ void MainWindow::draw(CVideo *v) {
     }
     if(focusRow==0) {
         if(!visible.empty()&&selectedTile().id==discTileId&&discIcon) {
-            constexpr float iconSize=22.f,gap=8.f;
+            constexpr float iconSize=30.f,gap=9.f;
             const float titleWidth=title.getTextWidth();
             const float groupWidth=titleWidth+gap+iconSize;
-            discIcon->setScale(iconSize/32.f);
+            discIcon->setScale(iconSize/48.f);
             drawImage(*discIcon,v,640-groupWidth/2+iconSize/2,166);
             discIcon->setScale(1.f);
             drawText(title,v,640+(iconSize+gap)/2,166);
@@ -807,7 +808,7 @@ void MainWindow::launch(uint64_t id) {
         launchFrame=frame;
         stopTitleWorkers();
         recordLaunch("regular",id,info.appType,patchResult,info.path);
-        _SYSLaunchTitleWithStdArgsInNoSplash(id,nullptr);
+        SYSLaunchTitle(id);
         recordLaunch("regular-returned",id,info.appType,patchResult,info.path);
         return;
     }
@@ -1004,7 +1005,10 @@ void MainWindow::rebuildView() {
     };
     if(sortMode) std::stable_sort(visible.begin(),visible.end(),[this,&ranks,&dayFor](size_t a,size_t b) {
         if(sortMode==3) {
-            auto aId=tiles[a].id==discTileId?discRecentId:tiles[a].id,bId=tiles[b].id==discTileId?discRecentId:tiles[b].id;
+            const bool aIsDisc=tiles[a].id==discTileId,bIsDisc=tiles[b].id==discTileId;
+            if(nx::recentlyInsertedDiscBefore(aIsDisc,bIsDisc,discIsInserted)) return true;
+            if(nx::recentlyInsertedDiscBefore(bIsDisc,aIsDisc,discIsInserted)) return false;
+            auto aId=aIsDisc?discRecentId:tiles[a].id,bId=bIsDisc?discRecentId:tiles[b].id;
             auto aDay=dayFor(aId),bDay=dayFor(bId);
             if(aDay!=bDay) return aDay>bDay;
             auto left=ranks.find(aId),right=ranks.find(bId);

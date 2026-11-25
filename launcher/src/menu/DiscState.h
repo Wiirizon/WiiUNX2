@@ -14,6 +14,9 @@ struct DiscSample {
     static DiscSample other() { return {Other,0}; }
 };
 enum class DiscAction { None, Inserted, Changed, Removed, Unsupported };
+inline bool recentlyInsertedDiscBefore(bool leftIsDisc,bool rightIsDisc,bool discIsInserted) {
+    return discIsInserted&&leftIsDisc&&!rightIsDisc;
+}
 class DiscMonitor {
 public:
     static constexpr unsigned removalSamples=2;

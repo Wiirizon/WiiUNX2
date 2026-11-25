@@ -70,10 +70,15 @@ Asset 'nxNetwork.png' 32 {
     $g.DrawArc($p,2,6,28,28,225,90);$g.DrawArc($p,7,11,18,18,225,90);$g.DrawArc($p,12,16,8,8,225,90)
     $b=[Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#333333'));$g.FillEllipse($b,14,24,4,4);$b.Dispose();$p.Dispose()
 }
-Asset 'nxDisc.png' 32 {
-    param($g) $p=Pen '#59636A' 2
-    $g.DrawEllipse($p,4,4,24,24);$g.DrawEllipse($p,12,12,8,8);$g.DrawArc($p,8,8,16,16,210,100)
-    $p.Dispose()
+Asset 'nxDisc.png' 48 {
+    param($g)
+    $fill=[Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#E7EEF0'))
+    $g.FillEllipse($fill,4,4,40,40);$fill.Dispose()
+    $p=Pen '#4E6068' 2.5
+    $g.DrawEllipse($p,4,4,40,40);$g.DrawEllipse($p,16,16,16,16)
+    $highlight=Pen '#FFFFFF' 2
+    $g.DrawArc($highlight,8,8,32,32,205,105)
+    $highlight.Dispose();$p.Dispose()
 }
 # WiiUNX2 0.5 rounded surfaces and refined glyphs.
 function RoundedPath($x,$y,$w,$h,$r) {

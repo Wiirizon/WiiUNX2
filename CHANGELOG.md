@@ -10,10 +10,13 @@
 
 ### Validation and known limitations
 
-- Host/source validation and the Wii U cross-build are pending.
+- The [Wii U cross-build](https://github.com/Wiirizon/WiiUNX2/actions/runs/45626601253)
+  and [Ubuntu host/source validation](https://github.com/Wiirizon/WiiUNX2/actions/runs/45626602019)
+  passed, including Recent-ordering and disc-icon checks.
 - The latest direct-Aroma logs show the Wii U disc launch/return path, but
   report empty ODD results during the Wii-disc test. Wii-disc detection and
   the 20–30 second disc-return delay remain unverified/under investigation.
+- The system-managed title splash change needs console confirmation.
 
 ## 0.7.14 — Stable release
 

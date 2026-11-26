@@ -36,7 +36,7 @@ public:
         pThreadStack = (uint8_t *) memalign(0x20, iStackSize);
         //! create the thread
         if (pThread && pThreadStack) {
-            OSCreateThread(pThread, &CThread::threadCallback, 1, (char *) this, pThreadStack + iStackSize, iStackSize, iPriority, iAttributes);
+            OSCreateThread(pThread, static_cast<OSThreadEntryPointFn>(&CThread::threadCallback), 1, (char *) this, pThreadStack + iStackSize, iStackSize, iPriority, iAttributes);
         }
     }
 
@@ -142,9 +142,17 @@ public:
     };
 
 private:
+    static int threadCallback(int, void *arg) {
+        return threadCallbackImpl(arg);
+    }
+
     static int threadCallback(int, const char **arg) {
+        return threadCallbackImpl(arg);
+    }
+
+    static int threadCallbackImpl(const void *arg) {
         //! After call to start() continue with the internal function
-        auto *thread = static_cast<CThread *>(const_cast<void *>(static_cast<const void *>(arg)));
+        auto *thread = static_cast<CThread *>(const_cast<void *>(arg));
         thread->executeThread();
         return 0;
     }

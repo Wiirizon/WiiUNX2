@@ -33,7 +33,9 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <cmath>
+#include <memory>
 #include "common/common.h"
 extern "C" int32_t ACPCheckTitleLaunchByTitleListTypeEx(MCPTitleListType*,uint32_t);
 
@@ -69,9 +71,45 @@ static void rememberAccountChoiceThisBoot() {
        FSUtils::saveBufferToFile(path.c_str(),text,uint32_t(length))!=length)
         DEBUG_FUNCTION_LINE("Could not save the boot account-choice marker");
 }
+static void logAutoDiscCandidates(int handle) {
+    constexpr size_t capacity=8192;
+    const size_t bytes=capacity*sizeof(MCPTitleListType);
+    std::unique_ptr<void,decltype(&free)> storage(memalign(64,bytes),&free);
+    if(!storage) {
+        DEBUG_FUNCTION_LINE("MCP AUTO diagnostic allocation failed for %u bytes",unsigned(bytes));
+        return;
+    }
+    uint32_t count=0;
+    const auto result=MCP_TitleListByDeviceType(handle,MCP_DEVICE_TYPE_AUTO,&count,
+        static_cast<MCPTitleListType *>(storage.get()),uint32_t(bytes));
+    if(result<0) {
+        DEBUG_FUNCTION_LINE("MCP AUTO diagnostic query failed: %d",int(result));
+        return;
+    }
+    if(count>capacity) {
+        DEBUG_FUNCTION_LINE("MCP AUTO diagnostic returned too many entries: %u",unsigned(count));
+        return;
+    }
+    uint32_t wiiEntries=0,oddEntries=0;
+    for(uint32_t i=0;i<count;++i) {
+        const auto &entry=static_cast<MCPTitleListType *>(storage.get())[i];
+        const bool wii=entry.appType==MCP_APP_TYPE_GAME_WII;
+        const bool odd=std::strncmp(entry.indexedDevice,"odd",3)==0;
+        if(!wii&&!odd) continue;
+        if(wii) ++wiiEntries;
+        if(odd) ++oddEntries;
+        DEBUG_FUNCTION_LINE("MCP AUTO candidate type 0x%08X device '%.*s'",
+            unsigned(entry.appType),int(sizeof(entry.indexedDevice)),entry.indexedDevice);
+    }
+    if(!wiiEntries&&!oddEntries)
+        DEBUG_FUNCTION_LINE("MCP AUTO diagnostic listed %u titles; no Wii-game or ODD-tagged entries",unsigned(count));
+    else
+        DEBUG_FUNCTION_LINE("MCP AUTO diagnostic listed %u titles; Wii-game entries=%u ODD-tagged entries=%u",
+            unsigned(count),unsigned(wiiEntries),unsigned(oddEntries));
+}
 static nx::DiscSample readDisc(MCPTitleListType &title,uint32_t *appTypeOut=nullptr) {
     static int lastOpenError=0,lastListError=0;
-    static bool openErrorLogged=false,listErrorLogged=false,emptyLogged=false,overflowLogged=false;
+    static bool openErrorLogged=false,listErrorLogged=false,emptyLogged=false,overflowLogged=false,autoDiagnosticDone=false;
     alignas(64) MCPTitleListType entries[4]{};uint32_t count=0;
     int handle=MCP_Open();
     if(handle<0) {
@@ -82,8 +120,8 @@ static nx::DiscSample readDisc(MCPTitleListType &title,uint32_t *appTypeOut=null
     }
     openErrorLogged=false;
     auto result=MCP_TitleListByDeviceType(handle,MCP_DEVICE_TYPE_ODD,&count,entries,sizeof(entries));
-    MCP_Close(handle);
     if(result<0) {
+        MCP_Close(handle);
         if(!listErrorLogged||result!=lastListError) DEBUG_FUNCTION_LINE("Disc ODD query failed: %d",int(result));
         listErrorLogged=true;lastListError=result;
         emptyLogged=false;overflowLogged=false;
@@ -91,6 +129,7 @@ static nx::DiscSample readDisc(MCPTitleListType &title,uint32_t *appTypeOut=null
     }
     listErrorLogged=false;
     if(count>4) {
+        MCP_Close(handle);
         if(!overflowLogged) DEBUG_FUNCTION_LINE("Disc ODD query returned too many entries: %u",unsigned(count));
         overflowLogged=true;
         return nx::DiscSample::error();
@@ -99,8 +138,14 @@ static nx::DiscSample readDisc(MCPTitleListType &title,uint32_t *appTypeOut=null
     if(count==0) {
         if(!emptyLogged) DEBUG_FUNCTION_LINE("Disc ODD query returned no entries");
         emptyLogged=true;
+        if(!autoDiagnosticDone) {
+            autoDiagnosticDone=true;
+            logAutoDiscCandidates(handle);
+        }
+        MCP_Close(handle);
         return nx::DiscSample::empty();
     }
+    MCP_Close(handle);
     emptyLogged=false;
     for(uint32_t i=0;i<count;++i) if(entries[i].appType==MCP_APP_TYPE_GAME) {
         title=entries[i];if(appTypeOut) *appTypeOut=uint32_t(entries[i].appType);

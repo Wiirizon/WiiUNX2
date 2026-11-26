@@ -22,13 +22,14 @@ Wii U disc metadata (`meta.xml`) is read only when the monitor reports Inserted 
 - No NAND or system-title changes are made. The code only reads MCP's ODD list, requests the system title launch, and records the existing opt-in launch diagnostic.
 - Other states not handled: dirty or unreadable discs (expected to appear as Error or Empty), a disc inserted while the drive is busy, discs of another region, and discs needing an update. The 2 s base interval is not proven to match stock timing.
 
-Diagnostics: each distinct Wii disc app type and unsupported app type gets one debug-log line until the drive state changes; that ODD-type line contains no title ID. The separate opt-in launch log may contain title IDs and paths as documented in MAINTAINING.md. The generic unsupported notice is shown once per unsupported period (deferred while another message or a launch is active; a deferred notice is dropped if the drive reads empty or a game before it is shown) and is independent of the log line. Insertion, launch, Wii-mode return, and polling behavior remain UNVERIFIED on console.
+Diagnostics: each distinct Wii disc app type and unsupported app type gets one debug-log line until the drive state changes; that ODD-type line contains no title ID. On the first empty ODD result per run, WiiUNX2 also queries MCP's `AUTO` device list once and logs only Wii-game app types and ODD device labels, without title IDs or paths. For this diagnostic, insert the Wii disc before starting WiiUNX2 so it is present during the first poll. The separate opt-in launch log may contain title IDs and paths as documented in MAINTAINING.md. The generic unsupported notice is shown once per unsupported period (deferred while another message or a launch is active; a deferred notice is dropped if the drive reads empty or a game before it is shown) and is independent of the log line. Insertion, launch, Wii-mode return, and polling behavior remain UNVERIFIED on console.
 
 ## Hardware checklist for the maintainer
 
 - [ ] Insert and eject a Wii U game disc: tile appears, launches, and disappears about 4 s after eject.
 - [ ] Swap two game discs: tile changes name without a stuck tile.
 - [ ] Insert a Wii disc: check for a "Wii Game Disc" tile and record its ODD app type without sharing title IDs.
+- [ ] If no tile appears, start the diagnostic build with the Wii disc already inserted and share the fresh `debug.log` lines beginning with `Disc ODD` and `MCP AUTO`; they contain no title IDs or paths.
 - [ ] Select the Wii disc tile: verify whether the system enters vWii and whether the expected return path works. Do not change NAND or system titles.
 - [ ] Insert a scratched or unreadable disc: no flicker and no log spam.
 
@@ -36,3 +37,9 @@ Diagnostics: each distinct Wii disc app type and unsupported app type gets one d
 
 - A Wii U Nintendo Land disc appeared once, launched successfully, and was removed from the row after ejection. The user observed a 20–30 second return to the menu after exiting that disc title; the Kirby Wii U title returned quickly. Existing diagnostics do not establish whether the disc-title delay is normal.
 - During the Wii-disc insertion, `debug.log` repeatedly recorded that the ODD query returned no entries. There was no Wii-disc ODD app-type diagnostic and `launch.log` contained no `wii-disc` launch record. This points to detection/listing as the current blocker; the launch path was not reached, and the log cannot establish whether MCP or the drive failed to expose the disc.
+
+## Follow-up diagnostic test (2026-11-26)
+
+- Wii Sports and Wii Sports Resort still produced no disc tile in direct Aroma. The ODD query returned no entries.
+- The diagnostic's broader MCP `AUTO` query reported 312 entries, more than the initial buffer sized from `MCP_TitleCount`; it logged the count but could not inspect candidate app types or device labels. The diagnostic now uses a 8192-entry bounded buffer for that query so it can safely inspect the returned list. This does not change disc detection or launch behavior.
+- The user also reports a menu freeze accompanied by a buzzing sound while navigating. The captured log has no crash trace; one session records two roughly 10-second menu heartbeats before ending, while the latest capture ends immediately after startup and the `AUTO` count diagnostic. The available log does not identify the freeze cause. Treat this as an unresolved runtime issue; stop using this diagnostic build if the freeze recurs and restore the backed-up RPX.

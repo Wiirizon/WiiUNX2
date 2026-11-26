@@ -142,9 +142,10 @@ public:
     };
 
 private:
-    static int threadCallback(int argc, void *arg) {
+    static int threadCallback(int, const char **arg) {
         //! After call to start() continue with the internal function
-        ((CThread *) arg)->executeThread();
+        auto *thread = static_cast<CThread *>(const_cast<void *>(static_cast<const void *>(arg)));
+        thread->executeThread();
         return 0;
     }
 

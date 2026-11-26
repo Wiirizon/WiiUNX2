@@ -27,6 +27,20 @@ test('disc titles use a separate icon instead of a name suffix',()=>{
   assert.equal(asset.readUInt32BE(20),48);
 });
 
+test('empty ODD results trigger a one-time ID-free AUTO-list diagnostic',()=>{
+  const source=read('launcher/src/menu/MainWindow.cpp');
+  const diagnostic=source.split('static void logAutoDiscCandidates(int handle) {')[1]?.split('\nstatic nx::DiscSample readDisc')[0];
+  assert.ok(diagnostic);
+  assert.match(diagnostic,/MCP_DEVICE_TYPE_AUTO/);
+  assert.match(diagnostic,/MCP_TitleListByDeviceType/);
+  assert.match(diagnostic,/MCP_APP_TYPE_GAME_WII/);
+  assert.match(diagnostic,/indexedDevice/);
+  assert.doesNotMatch(diagnostic,/\.titleId|\.path/);
+  assert.match(diagnostic,/constexpr size_t capacity=8192/);
+  assert.match(diagnostic,/count>capacity/);
+  assert.match(source,/if\(!autoDiagnosticDone\)\s*\{\s*autoDiagnosticDone=true;\s*logAutoDiscCandidates\(handle\);/);
+});
+
 test('disc insertion changes Recent ordering without recording a play',()=>{
   const state=read('launcher/src/menu/DiscState.h');
   const source=read('launcher/src/menu/MainWindow.cpp');

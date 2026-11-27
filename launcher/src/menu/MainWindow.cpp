@@ -334,11 +334,16 @@ void MainWindow::process() {
                 auto scanStart=OSGetSystemTime();
                 gameList.loadHomebrew();
                 DEBUG_FUNCTION_LINE("SD discovery: %llu ms",(unsigned long long)OSTicksToMilliseconds(OSGetSystemTime()-scanStart));
+                auto metadataStart=OSGetSystemTime();
                 for(int i=firstHomebrew;i<gameList.size() && !stopLoader;++i) {
                     gameList.loadNext();
                     std::lock_guard<std::mutex> guard(pendingMutex);
                     pending.push_back(*gameList.at(i));
                 }
+                const auto cacheStats=gameList.homebrewNameCacheStats();
+                DEBUG_FUNCTION_LINE("Homebrew names: cache hits=%u misses=%u bypasses=%u; metadata=%llu ms",
+                    unsigned(cacheStats.hits),unsigned(cacheStats.misses),unsigned(cacheStats.bypasses),
+                    (unsigned long long)OSTicksToMilliseconds(OSGetSystemTime()-metadataStart));
             }
             DEBUG_FUNCTION_LINE("Metadata scan finished in %llu ms",(unsigned long long)OSTicksToMilliseconds(OSGetSystemTime()-began));
             loaderDone=true;

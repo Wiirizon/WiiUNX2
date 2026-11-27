@@ -19,6 +19,12 @@ typedef struct _gameInfo {
     uint32_t titleVersion=0;
 } gameInfo;
 
+struct HomebrewNameCacheStats {
+    uint32_t hits=0;
+    uint32_t misses=0;
+    uint32_t bypasses=0;
+};
+
 class GameList {
 public:
     GameList();
@@ -67,6 +73,9 @@ public:
     void loadHomebrew();
     bool loadNext();
     void saveNameCache();
+    HomebrewNameCacheStats homebrewNameCacheStats() const {
+        return homebrewCacheStats;
+    }
 
     sigslot::signal1<GameList *> titleListChanged;
     sigslot::signal1<gameInfo *> titleUpdated;
@@ -82,6 +91,7 @@ public:
 
 protected:
     size_t nextMetadata = 0;
+    HomebrewNameCacheStats homebrewCacheStats;
 
     std::vector<gameInfo *> fullGameList;
 

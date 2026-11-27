@@ -5,7 +5,7 @@ horizontal software row, touch navigation, search, sorting, user selection,
 disc discovery and homebrew launching. It is not affiliated with, endorsed by
 or sponsored by Nintendo.
 
-The v0.7.4 release does not bundle Nintendo firmware, game files,
+The current v0.7.15 release does not bundle Nintendo firmware, game files,
 console system files, or recorded Nintendo audio. Its optional UI cues are
 original synthetic sounds generated without reference recordings. Game icons
 are read from software installed on the user's console and are not distributed.
@@ -49,7 +49,9 @@ WiiUNX2 still enumerates installed titles and scans `SD:/wiiu/apps/` at each
 startup so it can notice additions, removals and changed visibility settings.
 The persistent `wiiu/WiiUNX2/names.cache` reuses eligible display names only;
 it does not cache the app list, icons or GPU textures. Re-discovery and icon
-loading on each boot are therefore expected.
+loading on each boot are therefore expected. To diagnose startup time, enable
+the opt-in debug log; it reports SD-discovery duration and homebrew name-cache
+hits, misses and bypasses without logging app names or paths.
 
 WiiUNX2-owned data (recent history, the name cache, account marker, and
 opt-in diagnostics) is stored under `SD:/wiiu/WiiUNX2/`. On first launch after
@@ -131,9 +133,16 @@ The source-validation workflow is manual and does not publish binaries.
 
 ## Use on console
 
-Build and verify `launcher/men.rpx`, keep its SHA-256 file beside it, and
-review the target SD card before installation. Install it into the normal
-Aroma environment:
+Build and verify `launcher/men.rpx`, then create the checksum sidecar required
+by `Install-SD.ps1` from the repository root:
+
+```powershell
+$hash = (Get-FileHash .\launcher\men.rpx -Algorithm SHA256).Hash.ToLowerInvariant()
+"$hash  men.rpx" | Set-Content -NoNewline -Encoding ascii .\launcher\men.rpx.sha256
+```
+
+Review the target SD card before installation. Install into the normal Aroma
+environment:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\launcher\Install-SD.ps1 -SDRoot E:\

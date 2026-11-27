@@ -24,6 +24,7 @@ void ensureNamesLoaded() {
     const std::string path=nx::userDataPath(WiiUNX2UserDataDirectoryReady(),
         WiiUNX2UserDataMigrationComplete(),"names.cache","wiiunx2-names.cache");
     if(!nx::loadNameCache(files,path,names)) DEBUG_FUNCTION_LINE("Name cache unavailable; starting empty");
+    else DEBUG_FUNCTION_LINE("Loaded %u persistent name-cache entries",unsigned(names.size()));
 }
 }
 
@@ -32,7 +33,7 @@ GameList::~GameList() { clear(); }
 void GameList::clear() {
     std::lock_guard<std::recursive_mutex> guard(_lock);
     for(auto *info:fullGameList) { delete info->imageData; delete info; }
-    fullGameList.clear(); nextMetadata=0;
+    fullGameList.clear(); nextMetadata=0; homebrewCacheStats={};
 }
 gameInfo *GameList::getGameInfo(uint64_t id) {
     for(auto *info:fullGameList) if(info->titleId==id) return info;
@@ -103,8 +104,12 @@ bool GameList::loadNext() {
         ensureNamesLoaded();
         const auto cacheKey=nx::homebrewCacheKey(info->gamePath);
         auto cached=names.find(info->titleId);
-        if(!cacheKey.empty()&&cached!=names.end()&&cached->second.path==cacheKey) info->name=cached->second.name;
-        else {
+        if(!cacheKey.empty()&&cached!=names.end()&&cached->second.path==cacheKey) {
+            ++homebrewCacheStats.hits;
+            info->name=cached->second.name;
+        } else {
+            if(cacheKey.empty()) ++homebrewCacheStats.bypasses;
+            else ++homebrewCacheStats.misses;
             bool metadataValid=false;
             info->name=nx::homebrewName(info->gamePath,&metadataValid);
             if(metadataValid&&!cacheKey.empty()) {
@@ -156,4 +161,5 @@ void GameList::saveNameCache() {
     const std::string path=nx::userDataPath(WiiUNX2UserDataDirectoryReady(),
         WiiUNX2UserDataMigrationComplete(),"names.cache","wiiunx2-names.cache");
     if(!nx::saveNameCache(files,path,names)) DEBUG_FUNCTION_LINE("Name cache save failed; previous file retained");
+    else DEBUG_FUNCTION_LINE("Saved %u persistent name-cache entries",unsigned(names.size()));
 }

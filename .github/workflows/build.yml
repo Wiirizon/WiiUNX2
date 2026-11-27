@@ -67,7 +67,6 @@ jobs:
       run: |
         mkdir -p build-output
         cp launcher/men.rpx build-output/
-        cp launcher/men.elf build-output/ || true
         sha256sum build-output/men.rpx | awk '{print $1 "  men.rpx"}' > build-output/men.rpx.sha256
         
         # Create a simple info file
